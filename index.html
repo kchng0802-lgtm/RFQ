@@ -238,7 +238,9 @@
   .xo-card .xo-wt{font-size:22px;font-weight:750;color:#166534;letter-spacing:-.02em}
   .xo-card .xo-lbl{font-size:11px;color:#15803d;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
   .xo-card .xo-desc{font-size:12.5px;color:#166534;margin-top:4px}
-
+  .ai-out{font-size:13.5px;color:var(--ink);max-width:80ch}
+  .ai-out .section-title:first-child{margin-top:0}
+  .ai-out li{line-height:1.55}
 </style>
 </head>
 <body>
@@ -3167,7 +3169,7 @@ function viewWinner(){
        ${wc.map(w=>`<tr><td><b>${esc(w.scope.name)}</b></td><td>${w.win?`<b style="color:var(--ok)">${esc(w.win.c.name)}</b>`:'<span class="muted">no bid</span>'}</td><td class="num">${w.win?fmt(w.win.cost,2):'—'}</td><td class="num">${w.win&&w.win.score!=null?fmt(w.win.score,1):'—'}</td><td class="muted">${w.runner?esc(w.runner.c.name):'—'}</td></tr>`).join('')}
      </tbody></table></div></div>`;
   }
-  return stepper()+warn+body+`
+  return stepper()+warn+body+aiCard('award')+`
    <div class="card"><div class="hd"><div><h2>Reuse</h2><div class="desc">Save or duplicate for the next period.</div></div></div>
     <div class="bd"><div class="row-actions">
       <button class="btn ghost" onclick="duplicateRFQ()">⎘ Duplicate</button>
@@ -4256,7 +4258,7 @@ function viewSummary(){
      ${mixArr.map(x=>`<tr><td><b>${esc(x.w)}</b>${x.courier?' <span class="pill courier">courier</span>':''}</td><td class="num">${x.lanes}</td><td class="num">${fmt0(x.awd)}</td>
        <td><div class="flex" style="gap:8px"><div class="bar" style="flex:1;margin:0"><i style="width:${(x.awd/mixTot*100).toFixed(0)}%"></i></div><span class="small muted" style="width:44px;text-align:right">${fmt(x.awd/mixTot*100,1)}%</span></div></td></tr>`).join('')}
    </tbody></table></div></div>`;
-  return hero+cats+mixc;
+  return hero+cats+mixc+aiCard('executive');
 }
 
 function exportSummary(){
@@ -4384,7 +4386,7 @@ function viewYoY(){
       ${rows.sort((a,b)=>((b.cur-b.prior)/b.prior)-((a.cur-a.prior)/a.prior)).map(x=>{const p=x.prior>0?(x.cur-x.prior)/x.prior:null;const dp=x.mode==='air'?3:2;return `<tr><td>${esc(x.o)} → ${esc(x.d)}</td><td class="small muted">${x.mode==='air'?'Air':'Trucking · '+esc(x.g||'')}</td><td class="num">${fmt(x.prior,dp)}</td><td class="num">${fmt(x.cur,dp)}</td><td class="num" style="color:${moveColor(x.d)}">${(x.d>0?'+':'')+fmt(x.d,dp)}</td><td class="num" style="color:${moveColor(x.d)}">${p!=null?(p>0?'+':'')+fmt(p*100,1)+'%':'—'}</td></tr>`;}).join('')}
     </tbody></table></div>
     <div class="hint mt">${infoSVG()}<div>Red ▲ = rates rose vs ${esc(R.yoy.label)}; green ▼ = they fell. Spend uses this cycle’s volumes on both years so it isolates rate movement, not volume mix.</div></div>
-  </div></div>`;
+  </div></div>`+aiCard('yoy');
 }
 function exportYoY(){
   if(!R.yoy||!R.yoy.rows)return;const wt=num(R.cmp&&R.cmp.wt)!=null?num(R.cmp.wt):100;const side=R.yoy.cur||'loaded';
@@ -4724,6 +4726,169 @@ _booted=true;_dirty=false;updateDirty();
   R.volumes.lanes=R.volumes.lanes||[];
   persist();render();
 })();
+
+/* ============================================================
+   AI ANALYSIS — Gemini via the gemini-analyze Supabase function.
+   The API key lives as a function secret; nothing sensitive is held here.
+   ============================================================ */
+const AI_KINDS={
+  executive:{label:'Executive summary',desc:'Reads the savings rollup, award mix and milestone dates, and writes the management summary.'},
+  award:{label:'Vendor-selection rationale',desc:'Turns the cost and service scores into the written justification for the award paper.'},
+  yoy:{label:'Rate movement commentary',desc:'Explains the year-on-year movement and what it means for next cycle’s budget.'},
+};
+
+/* Compact, numbers-only brief. We send derived figures — never the raw project —
+   so the payload stays small and no forwarder contact details leave the browser. */
+function aiBrief(kind){
+  const p=R.profile||{};
+  const wt=num(R.cmp&&R.cmp.wt)!=null?num(R.cmp.wt):100;
+  const r2=(x)=>x==null?null:Math.round(x*100)/100;
+  const base={
+    rfq:rfqCode(), name:p.name||null, mode:p.mode||null, currency:cur(),
+    servicePeriod:{from:p.from||null,to:p.to||null},
+    preparedBy:p.preparedBy||null, awarded:!!p.awardDate,
+  };
+
+  if(kind==='executive'){
+    const hasR=(R.returns||[]).length>0;
+    if(!hasR) return {...base,note:'No forwarder returns imported yet — savings cannot be computed.'};
+    const D=summaryData(wt);
+    const curTot=D.air.cur+D.trk.cur, awdTot=D.air.awd+D.trk.awd;
+    const mix={};[D.air.byWinner,D.trk.byWinner].forEach(bw=>Object.entries(bw).forEach(([w,x])=>{
+      mix[w]=mix[w]||{lanes:0,awardSpend:0};mix[w].lanes+=x.lanes;mix[w].awardSpend+=x.awd;}));
+    const ms=milestones();
+    const lastSet=[...ms].reverse().find(m=>m.date);
+    return {...base,
+      lanePricingWeightKg:wt,
+      totals:{currentSpend:r2(curTot),awardSpend:r2(awdTot),saving:r2(curTot-awdTot),
+        savingPct:curTot?r2((curTot-awdTot)/curTot*100):null,lanesCovered:D.air.cov+D.trk.cov,
+        lanesUncovered:D.air.uncov+D.trk.uncov},
+      airfreight:{lanes:D.air.cov,volume:r2(D.air.vol),currentSpend:r2(D.air.cur),awardSpend:r2(D.air.awd)},
+      truckingByCountry:Object.entries(D.trk.byGroup).map(([g,v])=>({group:g,lanes:v.lanes,
+        volume:r2(v.vol),currentSpend:r2(v.cur),awardSpend:r2(v.awd),
+        savingPct:v.cur?r2((v.cur-v.awd)/v.cur*100):null})).sort((a,b)=>b.currentSpend-a.currentSpend),
+      awardMix:Object.entries(mix).map(([w,x])=>({forwarder:w,lanesWon:x.lanes,awardSpend:r2(x.awardSpend),
+        sharePct:awdTot?r2(x.awardSpend/awdTot*100):null})).sort((a,b)=>b.awardSpend-a.awardSpend),
+      milestones:ms.map(m=>({stage:m.label,date:m.date||null})),
+      cycleTimeDays:dayDiff(p.issuedDate,p.awardDate)??dayDiff(p.issuedDate,lastSet&&lastSet.date),
+    };
+  }
+
+  if(kind==='award'){
+    const round=R.r2.complete?2:1;
+    const judgesDone=R.ev.judges.filter(j=>judgeProgress(j.id).complete).length;
+    return {...base,
+      roundScored:round, round2Complete:!!R.r2.complete,
+      weighting:{costPct:R.ev.weights.cost,servicePct:R.ev.weights.service},
+      serviceDimensions:R.ev.dims.map(d=>({name:d.name,weight:d.weight})),
+      judges:{total:R.ev.judges.length,completed:judgesDone},
+      provisional:(!R.r2.complete||judgesDone<R.ev.judges.length),
+      ranking:winnerAir(round).map((x,i)=>({rank:i+1,forwarder:x.c.name,
+        combinedScore:r2(x.score),serviceScore:r2(x.svc),costScore:r2(costScoreAvg(round,x.c.id)),
+        avgRate:r2(x.cost),courier:!!x.c.courier})),
+      shortlistedForRound2:R.r1.shortlist.map(id=>(carrier(id)||{}).name).filter(Boolean),
+      scopeItems:R.scope.length,
+    };
+  }
+
+  if(kind==='yoy'){
+    if(!R.yoy||!R.yoy.rows||!R.yoy.rows.length) return {...base,note:'No prior-year baseline uploaded.'};
+    const side=R.yoy.cur||'loaded';
+    const awardMap={};
+    if(side==='award')['air','trucking'].forEach(m=>{awardMap[m]={};buildCmp(m,wt).forEach(L=>{if(L.best)awardMap[m][L.key]=L.best.ai;});});
+    const rows=R.yoy.rows.map(pr=>{const cr=curRateFor(pr.key,pr.mode,wt,side,awardMap);
+      return {...pr,cur:cr,vol:laneTotal(pr.key)};}).filter(x=>x.cur!=null);
+    let priorSpend=0,curSpend=0;const byG={};
+    rows.forEach(x=>{const v=x.vol||0;priorSpend+=x.rate*v;curSpend+=x.cur*v;
+      const g=x.mode==='air'?'Airfreight':'Trucking · '+(x.g||'—');
+      byG[g]=byG[g]||{lanes:0,prior:0,cur:0};byG[g].lanes++;byG[g].prior+=x.rate*v;byG[g].cur+=x.cur*v;});
+    const movers=rows.filter(x=>x.rate>0)
+      .map(x=>({lane:x.o+' → '+x.d,category:x.mode==='air'?'Air':'Trucking · '+(x.g||''),
+        priorRate:x.rate,currentRate:r2(x.cur),changePct:r2((x.cur-x.rate)/x.rate*100)}))
+      .sort((a,b)=>Math.abs(b.changePct)-Math.abs(a.changePct));
+    return {...base,
+      priorLabel:R.yoy.label, comparingAgainst:side==='award'?'new award rates':'current loaded rates',
+      lanesMatched:rows.length, lanesUploaded:R.yoy.rows.length, ltlWeightKg:wt,
+      note:'Both years are costed on this cycle’s volumes, so movement isolates rate, not volume mix.',
+      totals:{priorSpend:r2(priorSpend),currentSpend:r2(curSpend),change:r2(curSpend-priorSpend),
+        changePct:priorSpend?r2((curSpend-priorSpend)/priorSpend*100):null},
+      byCategory:Object.entries(byG).map(([g,v])=>({category:g,lanes:v.lanes,priorSpend:r2(v.prior),
+        currentSpend:r2(v.cur),changePct:v.prior?r2((v.cur-v.prior)/v.prior*100):null}))
+        .sort((a,b)=>b.priorSpend-a.priorSpend),
+      largestMovers:movers.slice(0,25),
+    };
+  }
+  return base;
+}
+
+/* Minimal markdown — headings, bullets, bold. Escapes first, so model output
+   can never inject markup into the page. */
+function aiMarkdown(src){
+  const inline=s=>esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+  const out=[];let list=null;
+  String(src).split(/\r?\n/).forEach(raw=>{
+    const line=raw.trim();
+    if(!line){if(list){out.push('</'+list+'>');list=null;}return;}
+    const h=line.match(/^(#{2,4})\s+(.*)$/);
+    if(h){if(list){out.push('</'+list+'>');list=null;}
+      out.push(`<div class="section-title" style="margin-top:14px">${inline(h[2])}</div>`);return;}
+    const b=line.match(/^[-*]\s+(.*)$/);
+    if(b){if(list!=='ul'){if(list)out.push('</'+list+'>');out.push('<ul style="margin:6px 0 6px 18px;padding:0">');list='ul';}
+      out.push(`<li style="margin:4px 0">${inline(b[1])}</li>`);return;}
+    const n=line.match(/^\d+[.)]\s+(.*)$/);
+    if(n){if(list!=='ol'){if(list)out.push('</'+list+'>');out.push('<ol style="margin:6px 0 6px 20px;padding:0">');list='ol';}
+      out.push(`<li style="margin:4px 0">${inline(n[1])}</li>`);return;}
+    if(list){out.push('</'+list+'>');list=null;}
+    out.push(`<p style="margin:8px 0;line-height:1.6">${inline(line)}</p>`);
+  });
+  if(list)out.push('</'+list+'>');
+  return out.join('');
+}
+
+function aiCard(kind){
+  const meta=AI_KINDS[kind];const saved=(R.ai||{})[kind];
+  const body=saved
+    ? `<div class="ai-out">${aiMarkdown(saved.text)}</div>
+       <div class="small muted mt">Generated ${esc(new Date(saved.at).toLocaleString())} · ${esc(saved.model||'Gemini')} · review before circulating.</div>`
+    : `<div class="empty" style="padding:18px 12px">${esc(meta.desc)}</div>`;
+  return `
+  <div class="card" id="aiCard-${kind}"><div class="hd">
+     <div><h2>✨ ${esc(meta.label)}</h2><div class="desc">Drafted by Gemini from the figures on this tab. Always check it before it leaves the building.</div></div>
+     <div class="no-print"><button class="btn teal sm" id="aiBtn-${kind}" onclick="aiAnalyze('${kind}')">${saved?'↻ Regenerate':'✨ Generate'}</button>
+       ${saved?`<button class="btn ghost sm" onclick="aiClear('${kind}')">Clear</button>`:''}</div>
+   </div>
+   <div class="bd" id="aiBody-${kind}">${body}</div>
+  </div>`;
+}
+
+function aiClear(kind){if(R.ai)delete R.ai[kind];persist();render();}
+
+async function aiAnalyze(kind){
+  if(!AI_KINDS[kind])return;
+  if(!_supabase){toast('Supabase not loaded — check your connection.');return;}
+  const btn=document.getElementById('aiBtn-'+kind), bodyEl=document.getElementById('aiBody-'+kind);
+  const restore=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Analysing…';}
+  if(bodyEl)bodyEl.innerHTML='<div class="empty" style="padding:18px 12px">Sending the figures to Gemini…</div>';
+  try{
+    const {data,error}=await _supabase.functions.invoke('gemini-analyze',{body:{kind,brief:aiBrief(kind)}});
+    // A non-2xx from the function lands in `error`; the JSON body carries our message.
+    if(error){
+      let msg=error.message||'Request failed.';
+      try{const j=await error.context?.json?.();if(j&&j.error)msg=j.error;}catch(e){}
+      throw new Error(msg);
+    }
+    if(!data||!data.text)throw new Error(data&&data.error?data.error:'No analysis returned.');
+    R.ai=R.ai||{};
+    R.ai[kind]={text:data.text,model:data.model||null,at:new Date().toISOString()};
+    persist();render();
+    toast(AI_KINDS[kind].label+' ready.');
+  }catch(err){
+    console.error('AI analysis failed:',err);
+    if(bodyEl)bodyEl.innerHTML=`<div class="hint warn">${infoSVG('#b45309')}<div><b>Couldn’t generate the analysis.</b><br>${esc(err.message||String(err))}</div></div>`;
+    if(btn){btn.disabled=false;btn.textContent=restore||'✨ Generate';}
+  }
+}
 
 /* ============================================================
    SUPABASE CLOUD SYNC — added layer on top of existing localStorage
