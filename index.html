@@ -4,6 +4,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FreightSphere — Strategic Freight Sourcing & Analytics Platform</title>
+<meta name="freightsphere-build" content="v12 · aligned to Complete User Guide v2.0 (23 Aug 2026)">
 <link rel="preconnect" href="https://fonts.googleapis.com/"><link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="window.__noXLSX=true"></script>
@@ -246,13 +247,121 @@
      LANDING PAGE — FreightSphere · Modern SaaS design
      ============================================================ -->
 <div id="loginGate" style="position:fixed;inset:0;z-index:99999;background:#0a0e1a;overflow-y:auto;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased">
+
+  <!-- ============ CINEMATIC SCENES (User Guide §2) ============
+       Air Cargo · Warehouse · Ground Ops rotate automatically. Each scene has an
+       optional <video> (set FS_SCENE_VIDEOS below to your approved MP4 URLs);
+       when video is blocked or not configured, the animated fallback background
+       keeps sign-in usable. -->
+  <div id="fsScenes" style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+    <div class="fs-scene fs-air on" data-scene="air">
+      <video class="fs-vid" muted loop playsinline preload="none"></video>
+      <div class="fs-fallback">
+        <div class="fs-runway"></div>
+        <svg class="fs-plane" viewBox="0 0 120 40" width="240" height="80"><path d="M2 22 L70 18 L96 6 L104 8 L88 20 L114 22 L116 26 L88 28 L96 36 L88 36 L66 28 L2 26 Z" fill="rgba(255,255,255,.85)"/></svg>
+        <svg class="fs-plane fs-plane2" viewBox="0 0 120 40" width="140" height="46"><path d="M2 22 L70 18 L96 6 L104 8 L88 20 L114 22 L116 26 L88 28 L96 36 L88 36 L66 28 L2 26 Z" fill="rgba(255,255,255,.45)"/></svg>
+        <div class="fs-lights"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <div class="fs-scene fs-wh" data-scene="warehouse">
+      <video class="fs-vid" muted loop playsinline preload="none"></video>
+      <div class="fs-fallback">
+        <div class="fs-racks"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <svg class="fs-fork" viewBox="0 0 120 60" width="180" height="90"><rect x="10" y="26" width="52" height="22" rx="3" fill="rgba(255,196,64,.9)"/><rect x="14" y="10" width="26" height="18" rx="2" fill="rgba(255,196,64,.9)"/><rect x="64" y="6" width="5" height="44" fill="rgba(255,255,255,.75)"/><rect x="66" y="40" width="36" height="4" fill="rgba(255,255,255,.75)"/><rect x="70" y="20" width="26" height="18" fill="rgba(204,9,47,.8)"/><circle cx="22" cy="50" r="7" fill="#111"/><circle cx="54" cy="50" r="7" fill="#111"/></svg>
+      </div>
+    </div>
+    <div class="fs-scene fs-ground" data-scene="ground">
+      <video class="fs-vid" muted loop playsinline preload="none"></video>
+      <div class="fs-fallback">
+        <div class="fs-road"><div class="fs-dash"></div></div>
+        <svg class="fs-truck" viewBox="0 0 160 60" width="220" height="82"><rect x="4" y="8" width="96" height="38" rx="4" fill="rgba(255,255,255,.85)"/><path d="M100 18 H128 L146 32 V46 H100 Z" fill="rgba(204,9,47,.9)"/><rect x="106" y="22" width="18" height="12" rx="2" fill="rgba(180,220,255,.9)"/><circle cx="26" cy="48" r="8" fill="#111"/><circle cx="48" cy="48" r="8" fill="#111"/><circle cx="130" cy="48" r="8" fill="#111"/></svg>
+        <svg class="fs-truck fs-truck2" viewBox="0 0 160 60" width="150" height="56"><rect x="4" y="8" width="96" height="38" rx="4" fill="rgba(255,255,255,.4)"/><path d="M100 18 H128 L146 32 V46 H100 Z" fill="rgba(204,9,47,.5)"/><circle cx="26" cy="48" r="8" fill="#111"/><circle cx="48" cy="48" r="8" fill="#111"/><circle cx="130" cy="48" r="8" fill="#111"/></svg>
+      </div>
+    </div>
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,14,26,.55) 0%,rgba(10,14,26,.35) 40%,rgba(10,14,26,.75) 100%)"></div>
+  </div>
+  <!-- Scene controls -->
+  <div id="fsSceneBar" style="position:fixed;left:24px;bottom:22px;z-index:6;display:flex;align-items:center;gap:6px;background:rgba(10,14,26,.62);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:6px 8px" class="no-print">
+    <span id="fsSceneLabel" style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#c8d1e0;padding:0 8px 0 6px">Air Cargo</span>
+    <button class="fs-chip on" data-pick="air" onclick="fsScene.pick('air')"><span class="fs-ico">✈</span><span class="fs-txt"> Air Cargo</span></button>
+    <button class="fs-chip" data-pick="warehouse" onclick="fsScene.pick('warehouse')"><span class="fs-ico">🏭</span><span class="fs-txt"> Warehouse</span></button>
+    <button class="fs-chip" data-pick="ground" onclick="fsScene.pick('ground')"><span class="fs-ico">🚛</span><span class="fs-txt"> Ground Ops</span></button>
+    <span style="width:1px;height:18px;background:rgba(255,255,255,.15);margin:0 4px"></span>
+    <button class="fs-chip" id="fsPlayBtn" onclick="fsScene.toggle()" title="Play / pause">⏸</button>
+    <button class="fs-chip" id="fsMuteBtn" onclick="fsScene.mute()" title="Mute / unmute">🔇</button>
+    <button class="fs-chip" onclick="fsScene.full()" title="Fullscreen">⛶</button>
+  </div>
+  <style>
+    .fs-scene{position:absolute;inset:0;opacity:0;transition:opacity 1.4s ease}
+    .fs-scene.on{opacity:1}
+    .fs-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+    .fs-scene.has-video .fs-vid{display:block}
+    .fs-scene.has-video .fs-fallback{display:none}
+    .fs-fallback{position:absolute;inset:0}
+    .fs-air .fs-fallback{background:radial-gradient(120% 80% at 50% 110%,rgba(74,158,255,.22) 0%,transparent 55%),linear-gradient(180deg,#0a0e1a 0%,#101a33 60%,#0a0e1a 100%)}
+    .fs-runway{position:absolute;left:-10%;right:-10%;bottom:14%;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent)}
+    .fs-lights{position:absolute;left:0;right:0;bottom:calc(14% - 6px);display:flex;justify-content:space-around}
+    .fs-lights i{width:6px;height:6px;border-radius:50%;background:#ffb347;box-shadow:0 0 10px #ffb347;animation:fsBlink 1.6s infinite}
+    .fs-lights i:nth-child(2n){animation-delay:.4s;background:#4a9eff;box-shadow:0 0 10px #4a9eff}
+    .fs-lights i:nth-child(3n){animation-delay:.8s}
+    .fs-plane{position:absolute;top:28%;left:-260px;animation:fsFly 22s linear infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+    .fs-plane2{top:52%;animation-duration:34s;animation-delay:-14s}
+    .fs-wh .fs-fallback{background:radial-gradient(90% 60% at 50% 0%,rgba(255,170,64,.16) 0%,transparent 60%),linear-gradient(180deg,#0f1218 0%,#1a1710 70%,#0a0e1a 100%)}
+    .fs-racks{position:absolute;left:0;right:0;top:12%;bottom:22%;display:flex;gap:4%;padding:0 6%;perspective:800px}
+    .fs-racks i{flex:1;border:2px solid rgba(255,196,64,.28);border-radius:4px;background:repeating-linear-gradient(180deg,transparent 0 22%,rgba(255,196,64,.18) 22% 24%);animation:fsRack 6s ease-in-out infinite}
+    .fs-racks i:nth-child(2n){animation-delay:-2s}.fs-racks i:nth-child(3n){animation-delay:-4s}
+    .fs-fork{position:absolute;bottom:16%;left:-220px;animation:fsFork 16s ease-in-out infinite;filter:drop-shadow(0 8px 14px rgba(0,0,0,.5))}
+    .fs-ground .fs-fallback{background:radial-gradient(100% 70% at 50% 100%,rgba(204,9,47,.18) 0%,transparent 60%),linear-gradient(180deg,#0a0e1a 0%,#151a24 55%,#0d1017 100%)}
+    .fs-road{position:absolute;left:0;right:0;bottom:10%;height:70px;background:linear-gradient(180deg,#1c222e,#11151d);border-top:1px solid rgba(255,255,255,.12)}
+    .fs-dash{position:absolute;left:0;right:0;top:50%;height:3px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.55) 0 60px,transparent 60px 120px);animation:fsDash 1.2s linear infinite}
+    .fs-truck{position:absolute;bottom:calc(10% + 26px);left:-260px;animation:fsDrive 18s linear infinite;filter:drop-shadow(0 8px 14px rgba(0,0,0,.5))}
+    .fs-truck2{bottom:calc(10% + 44px);animation-duration:28s;animation-delay:-9s;opacity:.7}
+    .fs-chip{background:transparent;border:1px solid transparent;color:#c8d1e0;font-size:12px;font-weight:600;padding:6px 10px;border-radius:9px;cursor:pointer;font-family:inherit;transition:background .15s}
+    .fs-chip:hover{background:rgba(255,255,255,.1);color:#fff}
+    .fs-chip.on{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.18)}
+    #loginGate.paused .fs-fallback *{animation-play-state:paused!important}
+    @keyframes fsFly{from{transform:translateX(0) translateY(0)}to{transform:translateX(calc(100vw + 300px)) translateY(-60px)}}
+    @keyframes fsBlink{0%,100%{opacity:.35}50%{opacity:1}}
+    @keyframes fsRack{0%,100%{opacity:.55}50%{opacity:1}}
+    @keyframes fsFork{0%{transform:translateX(0)}45%{transform:translateX(calc(100vw + 40px))}50%{transform:translateX(calc(100vw + 40px)) scaleX(-1)}95%{transform:translateX(0) scaleX(-1)}100%{transform:translateX(0)}}
+    @keyframes fsDash{from{background-position:0 0}to{background-position:-120px 0}}
+    @keyframes fsDrive{from{transform:translateX(0)}to{transform:translateX(calc(100vw + 300px))}}
+    @media(max-width:700px){#fsSceneBar{left:50%;right:auto;bottom:12px;transform:translateX(-50%);padding:4px 6px;gap:2px;border-radius:12px}#fsSceneLabel{display:none}#fsSceneBar .fs-chip{padding:6px 8px;font-size:12px}#fsSceneBar .fs-txt{display:none}}
+  </style>
+  <script>
+  /* Scene rotation, controls, and optional video sources */
+  window.FS_SCENE_VIDEOS = { air: '', warehouse: '', ground: '' }; // e.g. air:'https://cdn.example.com/air-cargo.mp4'
+  window.fsScene = (function(){
+    const order=['air','warehouse','ground'], labels={air:'Air Cargo',warehouse:'Warehouse',ground:'Ground Ops'};
+    let idx=0, playing=true, muted=true, timer=null;
+    function els(){return Array.from(document.querySelectorAll('#fsScenes .fs-scene'));}
+    function show(name){
+      idx=order.indexOf(name); if(idx<0) idx=0;
+      els().forEach(s=>{const on=s.dataset.scene===order[idx]; s.classList.toggle('on',on); const v=s.querySelector('.fs-vid'); if(v&&s.classList.contains('has-video')){ if(on&&playing) v.play().catch(()=>{}); else v.pause(); }});
+      document.querySelectorAll('.fs-chip[data-pick]').forEach(b=>b.classList.toggle('on',b.dataset.pick===order[idx]));
+      const l=document.getElementById('fsSceneLabel'); if(l) l.textContent=labels[order[idx]];
+    }
+    function schedule(){clearInterval(timer); if(playing) timer=setInterval(()=>show(order[(idx+1)%order.length]),14000);}
+    function init(){
+      els().forEach(s=>{const src=(window.FS_SCENE_VIDEOS||{})[s.dataset.scene]; const v=s.querySelector('.fs-vid');
+        if(src&&v){v.src=src; v.muted=true; v.addEventListener('canplay',()=>s.classList.add('has-video'),{once:true}); v.addEventListener('error',()=>s.classList.remove('has-video'),{once:true}); v.load();}});
+      show('air'); schedule();
+    }
+    return {
+      pick:function(n){show(n); schedule();},
+      toggle:function(){playing=!playing; document.getElementById('loginGate').classList.toggle('paused',!playing); const b=document.getElementById('fsPlayBtn'); if(b) b.textContent=playing?'⏸':'▶'; show(order[idx]); schedule();},
+      mute:function(){muted=!muted; document.querySelectorAll('#fsScenes .fs-vid').forEach(v=>v.muted=muted); const b=document.getElementById('fsMuteBtn'); if(b) b.textContent=muted?'🔇':'🔊';},
+      full:function(){const g=document.getElementById('loginGate'); if(document.fullscreenElement) document.exitFullscreen&&document.exitFullscreen(); else if(g.requestFullscreen) g.requestFullscreen().catch(()=>{});},
+      init:init
+    };
+  })();
+  document.addEventListener('DOMContentLoaded',function(){ try{ fsScene.init(); }catch(e){ console.warn('scenes',e); } });
+  </script>
   
-  <!-- Ambient gradient background -->
+  <!-- Ambient vignette over the cinematic scenes -->
   <div style="position:absolute;inset:0;background:
-    radial-gradient(circle at 20% 10%, rgba(204,9,47,.18) 0%, transparent 50%),
-    radial-gradient(circle at 80% 60%, rgba(74,158,255,.12) 0%, transparent 50%),
-    radial-gradient(circle at 50% 100%, rgba(255,107,138,.10) 0%, transparent 60%),
-    linear-gradient(180deg,#0a0e1a 0%,#0f1420 100%);
+    radial-gradient(circle at 20% 10%, rgba(204,9,47,.16) 0%, transparent 50%),
+    radial-gradient(circle at 80% 60%, rgba(74,158,255,.08) 0%, transparent 50%);
     pointer-events:none"></div>
   
   <!-- Subtle grid pattern overlay -->
@@ -524,10 +633,16 @@
           onkeypress="if(event.key===&#39;Enter&#39;)doLogin()"
           onfocus="this.style.borderColor='#cc092f';this.style.boxShadow='0 0 0 3px rgba(204,9,47,.1)'" onblur="this.style.borderColor='#e7eaf1';this.style.boxShadow='none'">
       </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#3b4658;margin:-10px 0 18px;cursor:pointer">
+        <input type="checkbox" id="fsRemember" style="width:auto;margin:0"> Remember username <span style="color:#8792a6">(private work device only)</span>
+      </label>
       <button onclick="doLogin()" id="loginBtn"
         style="width:100%;background:#0a0e1a;color:#fff;border:0;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:-.005em;transition:transform .12s,box-shadow .15s"
         onmouseover="this.style.background='#1a2030';this.style.boxShadow='0 8px 20px rgba(10,14,26,.3)'"
-        onmouseout="this.style.background='#0a0e1a';this.style.boxShadow='none'">Sign in</button>
+        onmouseout="this.style.background='#0a0e1a';this.style.boxShadow='none'">🔒 Secure sign in</button>
+      <div style="margin-top:12px;font-size:11.5px;color:#6b7686;line-height:1.5;text-align:center;background:#f5f6fa;border-radius:8px;padding:8px 10px">
+        <b style="color:#3b4658">Protected session.</b> Your workspace loads according to your assigned role. Sessions end automatically after 30 minutes of inactivity. Never share credentials.
+      </div>
       <div id="loginErr" style="color:#dc2626;font-size:12.5px;margin-top:12px;min-height:16px;font-weight:500;text-align:center;letter-spacing:-.005em"></div>
       
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid #f1f3f8">
@@ -537,7 +652,7 @@
           <div style="display:flex;align-items:center;gap:8px;color:#3b4658;font-weight:400"><span style="font-size:14px">✏️</span>Editor</div>
           <div style="display:flex;align-items:center;gap:8px;color:#3b4658;font-weight:400"><span style="font-size:14px">📊</span>Evaluator</div>
           <div style="display:flex;align-items:center;gap:8px;color:#3b4658;font-weight:400"><span style="font-size:14px">👁</span>Viewer</div>
-          <div style="display:flex;align-items:center;gap:8px;color:#3b4658;font-weight:400;grid-column:span 2"><span style="font-size:14px">🚚</span>Forwarder <span style="color:#8792a6">— view lanes &amp; volumes</span></div>
+          <div style="display:flex;align-items:center;gap:8px;color:#3b4658;font-weight:400;grid-column:span 2"><span style="font-size:14px">🚚</span>Forwarder <span style="color:#8792a6">— bid desk: enter rates, save drafts, submit before the deadlanes &amp; volumes</span></div>
         </div>
       </div>
     </div>
@@ -548,6 +663,8 @@
 window.showLoginModal = function() {
   const m = document.getElementById('loginModal');
   m.style.display = 'flex';
+  try { const ru = localStorage.getItem('fs_remember_user'); if(ru){ document.getElementById('loginUser').value = ru; document.getElementById('fsRemember').checked = true; } } catch(e){}
+  try { if(sessionStorage.getItem('fs_idle_notice')){ document.getElementById('loginErr').textContent = 'Your session ended after 30 minutes of inactivity. Please sign in again.'; sessionStorage.removeItem('fs_idle_notice'); } } catch(e){}
   setTimeout(() => document.getElementById('loginUser').focus(), 100);
 };
 window.hideLoginModal = function() {
@@ -600,7 +717,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 </style>
 <!-- ============================================================
-     FORWARDER VIEW-ONLY PORTAL — no rate submission (email only)
+     FORWARDER PORTAL — lane reference, live countdowns, bid desk (draft + final submission)
      ============================================================ -->
 <div id="forwarderPortal" style="display:none;position:fixed;inset:0;z-index:9998;background:#f5f6fa;overflow-y:auto;font-family:'Inter',sans-serif">
   <div style="background:radial-gradient(130% 150% at 0% -10%,#db1739 0%,#cc092f 44%,#a30825 100%);color:#fff;padding:18px 22px;box-shadow:0 2px 8px rgba(0,0,0,.15)">
@@ -705,7 +822,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
           <div>
             <div style="font-size:15px;font-weight:700;color:#0b1220">📊 Lane & Volume Details</div>
-            <div style="color:#6b7686;font-size:12.5px;margin-top:3px">Reference data for your bidding</div>
+            <div style="color:#6b7686;font-size:12.5px;margin-top:3px">Reference data for your bidding — enter your rates in the bid desk below</div>
           </div>
           <button onclick="fpDownloadExcel()" style="background:#cc092f;color:#fff;border:0;padding:9px 16px;border-radius:10px;font-size:13.5px;font-weight:650;cursor:pointer;box-shadow:0 1px 2px rgba(204,9,47,.25)">↓ Download Excel</button>
         </div>
@@ -731,27 +848,10 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
       </div>
 
-      <!-- Submission instructions -->
-      <div id="fpSubmitCard" style="background:linear-gradient(135deg,#cc092f,#a30825);color:#fff;border-radius:16px;padding:26px 28px;margin-bottom:20px;box-shadow:0 10px 30px -5px rgba(204,9,47,.3)">
-        <div style="font-size:16px;font-weight:700;margin-bottom:10px">📧 How to Submit Your Rates</div>
-        <div style="font-size:13.5px;line-height:1.7;color:#ffe0e6;margin-bottom:16px">
-          <strong>Step 1:</strong> Download the RFT Template below.<br>
-          <strong>Step 2:</strong> Fill in your rates (Air + Trucking sheets).<br>
-          <strong>Step 3:</strong> Email the completed template to Broadcom procurement.<br>
-          <em style="opacity:.85">Include RFQ code, your company name, and round number in the subject.</em>
-        </div>
-        <div style="background:rgba(0,0,0,.2);border-radius:10px;padding:14px 16px;margin-bottom:14px">
-          <div style="font-size:11px;color:#ffb8c4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Email to</div>
-          <div style="font-size:14.5px;font-weight:700;font-family:'SF Mono',Monaco,Consolas,monospace">brcm-logistics-sg.pdl@broadcom.com</div>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button onclick="fpDownloadTemplate()" style="background:#0b1220;color:#fff;border:0;padding:11px 20px;border-radius:10px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);display:inline-flex;align-items:center;gap:8px">
-            <span style="font-size:16px">⭳</span> RFT Template (Air + Trucking)
-          </button>
-          <a id="fpMailtoBtn" href="#" style="background:#fff;color:#cc092f;padding:11px 20px;border-radius:10px;font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,.2)">✉️ Open Email</a>
-          <button onclick="fpCopyEmail()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);padding:11px 20px;border-radius:10px;font-size:13.5px;font-weight:650;cursor:pointer">📋 Copy Email</button>
-        </div>
-      </div>
+      <!-- Bid desk (rate entry · save draft · submit final) — rendered by fpRenderBidDesk() -->
+      <div id="fpSubmitCard" style="display:none;height:0;overflow:hidden"></div>
+      <a id="fpMailtoBtn" href="#" style="display:none"></a>
+      <div id="fpBidDesk"></div>
     </div>
 
     <div id="fpEmpty" style="text-align:center;padding:60px 20px;color:#8792a6">
@@ -776,8 +876,26 @@ document.addEventListener('DOMContentLoaded', function() {
   const CONTACT_EMAIL = 'brcm-logistics-sg.pdl@broadcom.com';
 
   let _sb = null;
+  // Clone-safe fetch: some hosts (in-app HTML previews, srcdoc sandboxes) proxy fetch via postMessage and
+  // cannot clone Request/Headers/AbortSignal objects -> "DataCloneError: The object can not be cloned".
+  // Flatten every call to (string URL, plain object) so supabase-js works everywhere, incl. GitHub Pages.
+  window.fsFetch = function(input, init) {
+    try {
+      const url = (typeof input === 'string') ? input : (input && input.url) ? input.url : String(input);
+      const o = init || {};
+      const headers = {};
+      const src = o.headers || (input && input.headers);
+      if (src) { if (typeof src.forEach === 'function' && !Array.isArray(src)) src.forEach((v,k)=>{ headers[k]=v; }); else if (Array.isArray(src)) src.forEach(([k,v])=>{ headers[k]=v; }); else Object.assign(headers, src); }
+      let body = o.body != null ? o.body : undefined;
+      if (body != null && typeof body !== 'string' && !(body instanceof ArrayBuffer) && !(typeof Blob !== 'undefined' && body instanceof Blob) && !(typeof FormData !== 'undefined' && body instanceof FormData)) { try { body = JSON.stringify(body); } catch(e) { body = String(body); } }
+      const plain = { method: o.method || (input && input.method) || 'GET', headers: headers };
+      if (body !== undefined) plain.body = body;
+      return window.fetch(url, plain);
+    } catch(e) { return window.fetch(input, init); }
+  };
+  window.FS_SB_OPTS = { global: { fetch: function(){ return window.fsFetch.apply(null, arguments); } }, auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
   window.getSB = function() {
-    if(!_sb && window.supabase) _sb = window.supabase.createClient(SB_URL, SB_KEY);
+    if(!_sb && window.supabase) _sb = window.supabase.createClient(SB_URL, SB_KEY, window.FS_SB_OPTS);
     return _sb;
   };
 
@@ -808,13 +926,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if(!user || !pass) { err.textContent = '✗ Enter username and password'; return; }
     btn.textContent = 'Signing in...'; btn.disabled = true;
     const sb = window.getSB();
-    if(!sb) { err.textContent='✗ Cannot reach server'; btn.textContent='Sign In'; btn.disabled=false; return; }
+    if(!sb) { err.textContent='✗ Cannot reach server'; btn.textContent='🔒 Secure sign in'; btn.disabled=false; return; }
     try {
       const {data, error} = await sb.from('forwarder_users').select('*').eq('username', user).eq('active', true).maybeSingle();
       if(error) throw error;
       if(!data || data.password !== pass) {
         err.textContent = '✗ Invalid username or password';
-        btn.textContent = 'Sign In'; btn.disabled = false;
+        btn.textContent = '🔒 Secure sign in'; btn.disabled = false;
         return;
       }
       sb.from('forwarder_users').update({last_login: new Date().toISOString()}).eq('username', user).then(()=>{});
@@ -824,11 +942,14 @@ document.addEventListener('DOMContentLoaded', function() {
         isAdmin: (data.role === 'admin')
       };
       sessionStorage.setItem(AUTH_KEY, JSON.stringify({t: Date.now(), u: u}));
+      try { const rm = document.getElementById('fsRemember'); if(rm && rm.checked) localStorage.setItem('fs_remember_user', user); else localStorage.removeItem('fs_remember_user'); } catch(e){}
       window.CURRENT_USER = u;
       enterApp(u);
     } catch(e) {
-      err.textContent = '✗ ' + e.message;
-      btn.textContent = 'Sign In'; btn.disabled = false;
+      const m = (e && (e.message || e.error_description || e.details)) || (typeof e === 'string' ? e : JSON.stringify(e));
+      err.textContent = '✗ ' + (/DataCloneError|can not be cloned/i.test(m) ? 'This preview cannot reach Supabase. Open the hosted app (GitHub Pages) in Safari, Chrome or Edge to sign in.' : (/Failed to fetch|NetworkError|Load failed/i.test(m) ? 'Cannot reach Supabase — check the network / firewall and try again.' : m));
+      console.warn('Login failed:', m);
+      btn.textContent = '🔒 Secure sign in'; btn.disabled = false;
     }
   };
 
@@ -942,11 +1063,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const sb = window.getSB();
     if(!sb) return;
     try {
-      const {data, error} = await sb.from('rfq_projects').select('id, name, code, year, updated_at').order('updated_at', {ascending:false});
+      const {data: raw, error} = await sb.from('rfq_projects').select('id, name, code, year, updated_at, data').order('updated_at', {ascending:false});
       if(error) throw error;
+      // Bid eligibility (User Guide §3): a company sees only RFQ modes it is assigned to in Setup
+      const company = ((window.FP_USER||{}).company||'').trim().toLowerCase();
+      const data = (raw||[]).filter(r => {
+        const d = r.data || {}; const cars = (d.carriers||[]).filter(c => c.name && c.name.trim());
+        if(!cars.length) return true;
+        const me = cars.find(c => c.name.trim().toLowerCase() === company);
+        if(!me) return false;
+        const mode = ((d.profile||{}).mode||'air'); const elig = me.elig || 'both';
+        return elig === 'both' || elig === mode;
+      });
       const sel = document.getElementById('fpRfqSelect');
       if(!data || data.length === 0) {
-        sel.innerHTML = '<option value="">No RFQs available yet</option>';
+        sel.innerHTML = '<option value="">No RFQs assigned to your company yet</option>';
         return;
       }
       sel.innerHTML = '<option value="">Select an RFQ...</option>' +
@@ -961,6 +1092,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('fpTimerCard').style.display = 'none';
       document.getElementById('fpResultBanner').style.display = 'none';
       document.getElementById('fpEmpty').style.display = 'block';
+      const bd = document.getElementById('fpBidDesk'); if(bd) bd.innerHTML = '';
       if(window.FP_TIMER) { clearInterval(window.FP_TIMER); window.FP_TIMER = null; }
       return;
     }
@@ -980,11 +1112,14 @@ document.addEventListener('DOMContentLoaded', function() {
       window.FP_ROUNDS = rounds || [];
       window.FP_STATUS = status || [];
       window.FP_MODE_FILTER = 'ALL';
+      window.FP_TARGETS = (rfq.data && rfq.data.r2targets) || {};
+      window.FP_TARGETS_PUBLISHED = !!(rfq.data && rfq.data.r2targetsPublished);
 
       document.getElementById('fpEmpty').style.display = 'none';
       renderRoundState();
       renderDataTable();
       setupMailto();
+      if(window.fpRenderBidDesk) window.fpRenderBidDesk();
     } catch(e){ alert('Error loading RFQ: ' + e.message); }
   };
 
@@ -1127,7 +1262,7 @@ document.addEventListener('DOMContentLoaded', function() {
     timer.style.display = 'block';
     title.textContent = 'Round ' + roundNum + ' — ' + (round.round_name || (roundNum===1?'Initial Bidding':'Best & Final'));
     if(roundNum === 1) {
-      sub.textContent = 'Submit your initial rates via email before deadline';
+      sub.textContent = 'Enter rates below, save drafts as needed, and submit your final bid before the deadline';
     } else {
       sub.textContent = '🏆 You are in Top 3 — submit best & final rates before deadline';
     }
@@ -1263,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', function() {
       '  Submitted: '+new Date().toLocaleString()+'\n\n' +
       'Best regards,\n'+(window.FP_USER.company||'')
     );
-    document.getElementById('fpMailtoBtn').href = 'mailto:'+CONTACT_EMAIL+'?subject='+subj+'&body='+body;
+    const mb = document.getElementById('fpMailtoBtn'); if(mb) mb.href = 'mailto:'+CONTACT_EMAIL+'?subject='+subj+'&body='+body;
   }
 
   window.fpCopyEmail = function() {
@@ -1820,6 +1955,147 @@ document.addEventListener('DOMContentLoaded', function() {
 
 })();
 </script>
+
+<script>
+/* ================================================================
+   FORWARDER PORTAL — BID DESK (User Guide §5 & §7)
+   Rate entry grid · Save draft · Submit final bid · Round-2 target
+   signals (Blue / Green / Amber / Red) · confirmation time retained.
+   Storage: Supabase forwarder_rates (draft | submitted) with a local
+   fallback so a forwarder never loses work.
+   ================================================================ */
+(function(){
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const num=v=>{if(v===''||v==null)return null;const n=parseFloat(String(v).replace(/[, ]/g,''));return isFinite(n)?n:null;};
+  const fmt=(n,d=3)=>n==null?'—':n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+  const localKey=()=>'fs_fp_bid_'+window.FP_RFQ_ID+'_'+(window.FP_USER||{}).username+'_'+activeRound();
+  const AIR_COLS=[['airline','Airline','text'],['tat','Transit (d)','num'],['min','Min charge','num'],['bs','Base /kg','num'],['fsc','FSC /kg','num'],['adder','Adder /kg','num'],['rem','Remarks','text']];
+  const TRK_COLS=[['tat','Transit (d)','num'],['r1t','1-ton','num'],['r3t','3-ton','num'],['r20','20ft','num'],['r40','40ft','num'],['ltlmin','LTL min','num'],['ltlpk','LTL /kg','num'],['customs','Customs','num'],['rem','Remarks','text']];
+
+  function r1Passed(){const st=(window.FP_STATUS||[]).find(s=>s.round_number===1);return st&&st.status==='passed';}
+  function activeRound(){
+    const rounds=window.FP_ROUNDS||[];const r1=rounds.find(r=>r.round_number===1),r2=rounds.find(r=>r.round_number===2);const now=Date.now();
+    if(r1&&new Date(r1.close_at).getTime()<now&&r1Passed())return 2;
+    return 1;
+  }
+  function roundOpen(n){const r=(window.FP_ROUNDS||[]).find(x=>x.round_number===n);if(!r)return n===1;const now=Date.now();const openOK=!r.open_at||new Date(r.open_at).getTime()<=now;return openOK&&new Date(r.close_at).getTime()>now;}
+  function isTrucking(){return (window.FP_MODE||'AIR')!=='AIR';}
+  function signal(allin,target){if(allin==null||target==null)return null;const g=(allin-target)/target;if(g<=0)return ['#1d4ed8','Blue','meets or beats target'];if(g<=0.02)return ['#12805c','Green','within 2% above'];if(g<=0.05)return ['#b45309','Amber','2–5% above'];return ['#c0392b','Red','>5% above'];}
+
+  window.FP_BID=null;
+  async function loadBid(){
+    const round=activeRound();const sb=window.getSB&&window.getSB();
+    let bid=null;
+    if(sb){try{const {data,error}=await sb.from('forwarder_rates').select('*').eq('rfq_id',window.FP_RFQ_ID).eq('forwarder_username',window.FP_USER.username).eq('round_number',round).maybeSingle();if(!error&&data)bid=data;}catch(e){}}
+    if(!bid){try{const l=JSON.parse(localStorage.getItem(localKey())||'null');if(l)bid=l;}catch(e){}}
+    if(!bid){bid={rfq_id:window.FP_RFQ_ID,forwarder_username:window.FP_USER.username,forwarder_company:window.FP_USER.company,round_number:round,status:'draft',rates:{air:{},trucking:{}},updated_at:null,submitted_at:null};
+      // Round 2 pre-fills from the Round 1 submission
+      if(round===2){let r1=null;
+        if(sb){try{const {data}=await sb.from('forwarder_rates').select('rates').eq('rfq_id',window.FP_RFQ_ID).eq('forwarder_username',window.FP_USER.username).eq('round_number',1).maybeSingle();if(data&&data.rates)r1=data.rates;}catch(e){}}
+        if(!r1){try{const l=JSON.parse(localStorage.getItem('fs_fp_bid_'+window.FP_RFQ_ID+'_'+window.FP_USER.username+'_1')||'null');if(l&&l.rates)r1=l.rates;}catch(e){}}
+        if(r1)bid.rates=JSON.parse(JSON.stringify(r1));}}
+    bid.rates=bid.rates||{air:{},trucking:{}};bid.rates.air=bid.rates.air||{};bid.rates.trucking=bid.rates.trucking||{};
+    window.FP_BID=bid;
+  }
+  function collect(){
+    const b=window.FP_BID;const key=isTrucking()?'trucking':'air';
+    document.querySelectorAll('[data-fpl]').forEach(el=>{const lid=el.dataset.fpl,k=el.dataset.fpk;b.rates[key][lid]=b.rates[key][lid]||{};const lane=(window.FP_LANES||[]).find(l=>l.id===lid)||{};
+      b.rates[key][lid].origin=lane.origin;b.rates[key][lid].dest=lane.destination;b.rates[key][lid].lane=lane.name;
+      b.rates[key][lid][k]=el.dataset.fpt==='num'?num(el.value):el.value;});
+  }
+  function allin(v){return v&&v.bs!=null?(num(v.bs)||0)+(num(v.fsc)||0)+(num(v.adder)||0):null;}
+  function validate(){
+    const b=window.FP_BID;const lanes=window.FP_LANES||[];const key=isTrucking()?'trucking':'air';const probs=[];let quoted=0;
+    lanes.forEach(l=>{const v=b.rates[key][l.id]||{};
+      if(isTrucking()){if([v.r1t,v.r3t,v.r20,v.r40,v.ltlmin].some(x=>num(x)!=null))quoted++;else probs.push(l.name+': no rate');if(num(v.ltlmin)!=null&&num(v.ltlpk)==null)probs.push(l.name+': LTL min without per-kg');}
+      else{if(num(v.bs)!=null){quoted++;if(num(v.min)==null)probs.push(l.name+': minimum charge missing');}else probs.push(l.name+': base rate missing (leave blank only if you decline the lane)');}
+    });
+    return {quoted,probs};
+  }
+  async function persistBid(status){
+    const b=window.FP_BID;collect();b.status=status;b.updated_at=new Date().toISOString();if(status==='submitted')b.submitted_at=b.updated_at;
+    let cloud=false,err='';const sb=window.getSB&&window.getSB();
+    if(sb){try{const row={rfq_id:b.rfq_id,forwarder_username:b.forwarder_username,forwarder_company:b.forwarder_company,round_number:b.round_number,status:b.status,rates:b.rates,updated_at:b.updated_at,submitted_at:b.submitted_at};
+      const {error}=await sb.from('forwarder_rates').upsert(row,{onConflict:'rfq_id,forwarder_username,round_number'});if(error)throw error;cloud=true;}catch(e){err=e.message;}}
+    try{localStorage.setItem(localKey(),JSON.stringify(b));}catch(e){}
+    return {cloud,err};
+  }
+  window.fpSaveDraft=async function(){
+    if(!window.FP_BID)return;const r=await persistBid(window.FP_BID.status==='submitted'?'submitted':'draft');
+    window.fpRenderBidDesk();
+    toastFP(r.cloud?'Draft saved to the portal at '+new Date().toLocaleTimeString()+'. A saved draft is not a submitted bid.':'Saved on this device only ('+(r.err||'offline')+'). Submit when the connection is restored.');
+  };
+  window.fpSubmitFinal=async function(){
+    if(!window.FP_BID)return;const round=activeRound();
+    if(!roundOpen(round)){toastFP('Round '+round+' is closed — submission is no longer possible.');window.fpRenderBidDesk();return;}
+    collect();const v=validate();
+    if(!v.quoted){toastFP('Enter at least one lane rate before submitting.');return;}
+    const msg='Submit FINAL Round '+round+' bid for '+(window.FP_USER.company||'')+'?\n\nLanes quoted: '+v.quoted+' of '+(window.FP_LANES||[]).length+(v.probs.length?'\n\nValidation notes:\n• '+v.probs.slice(0,8).join('\n• ')+(v.probs.length>8?'\n• …':''):'')+'\n\nCurrency: USD · units per kg (air) / per trip (trucking). This replaces any earlier submission for this round.';
+    if(!confirm(msg))return;
+    const r=await persistBid('submitted');window.fpRenderBidDesk();
+    if(r.cloud)toastFP('✓ Final bid submitted '+new Date(window.FP_BID.submitted_at).toLocaleString()+'. Please retain this confirmation time.');
+    else toastFP('Bid stored on this device but NOT received by the portal ('+(r.err||'offline')+'). Retry before the deadline or email procurement.');
+  };
+  function toastFP(m){let t=$('fpToast');if(!t){t=document.createElement('div');t.id='fpToast';t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#0b1220;color:#fff;padding:12px 18px;border-radius:12px;font-size:13.5px;font-weight:600;z-index:100001;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90vw;text-align:center';document.body.appendChild(t);}t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',6000);}
+
+  window.fpRenderBidDesk=async function(){
+    const box=$('fpBidDesk');if(!box)return;
+    if(!window.FP_RFQ_ID){box.innerHTML='';return;}
+    await loadBid();
+    const b=window.FP_BID;const round=activeRound();const open=roundOpen(round);const lanes=window.FP_LANES||[];const trk=isTrucking();const cols=trk?TRK_COLS:AIR_COLS;const key=trk?'trucking':'air';
+    const targets=(window.FP_TARGETS_PUBLISHED&&window.FP_TARGETS)||{};const showTargets=round===2&&!trk&&Object.keys(targets).length>0;
+    const submitted=b.status==='submitted';
+    const inp=(l,c)=>{const v=(b.rates[key][l.id]||{})[c[0]];return `<input data-fpl="${l.id}" data-fpk="${c[0]}" data-fpt="${c[2]}" value="${esc(v??'')}" ${open?'':'disabled'} ${c[2]==='num'?'inputmode="decimal"':''} style="width:${c[0]==='rem'?'140px':c[0]==='airline'?'90px':'74px'};padding:6px 8px;border:1px solid #e7eaf1;border-radius:8px;font-size:12.5px;background:${open?'#fffbe6':'#f5f6fa'};font-family:inherit;text-align:${c[2]==='num'?'right':'left'}" oninput="fpRecalc(this)">`;};
+    const rows=lanes.map(l=>{const v=b.rates[key][l.id]||{};const ai=allin(v);const sg=showTargets?signal(ai,num(targets[l.id])):null;
+      return `<tr><td style="padding:8px 10px;border-bottom:1px solid #f1f3f8;white-space:nowrap"><b>${esc(l.name)}</b><div style="font-size:11px;color:#6b7686">${l.volume?Number(l.volume).toLocaleString()+' kg':''}</div></td>
+        ${cols.map(c=>`<td style="padding:6px 6px;border-bottom:1px solid #f1f3f8">${inp(l,c)}</td>`).join('')}
+        ${trk?'':`<td style="padding:8px 10px;border-bottom:1px solid #f1f3f8;text-align:right;font-variant-numeric:tabular-nums" id="fpai_${l.id}"><b>${fmt(ai)}</b></td>`}
+        ${showTargets?`<td style="padding:8px 10px;border-bottom:1px solid #f1f3f8;text-align:right;font-variant-numeric:tabular-nums">${fmt(num(targets[l.id]))}</td><td style="padding:8px 10px;border-bottom:1px solid #f1f3f8" id="fpsig_${l.id}">${sg?`<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${sg[0]}"><span style="width:10px;height:10px;border-radius:50%;background:${sg[0]}"></span>${sg[1]}</span>`:'<span style="color:#8792a6">—</span>'}</td>`:''}
+      </tr>`;}).join('');
+    const th=t=>`<th style="text-align:left;padding:10px 8px;border-bottom:1px solid #e7eaf1;font-size:11px;text-transform:uppercase;color:#6b7686;font-weight:700;white-space:nowrap">${t}</th>`;
+    const status=submitted?`<span style="background:#e7f5ee;color:#12805c;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700">✓ Submitted ${esc(new Date(b.submitted_at).toLocaleString())}</span>`:(b.updated_at?`<span style="background:#fdf1e1;color:#b45309;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700">Draft saved ${esc(new Date(b.updated_at).toLocaleString())} — not yet submitted</span>`:`<span style="background:#eef1f6;color:#3b4658;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700">No bid entered yet</span>`);
+    const legend=showTargets?`<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12px;margin:10px 0 14px;padding:10px 14px;background:#f5f6fa;border-radius:10px">${[['#1d4ed8','Blue','meets or beats target — submit if commercially sustainable'],['#12805c','Green','within 2% above — make a small improvement'],['#b45309','Amber','2–5% above — review cost drivers'],['#c0392b','Red','>5% above — materially revise or explain']].map(x=>`<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${x[0]};margin-right:6px"></span><b>${x[1]}</b> — ${x[2]}</span>`).join('')}</div>`:(round===2&&!trk?'<div style="font-size:12.5px;color:#6b7686;margin-bottom:12px">Confidential lane targets will appear here once published by Broadcom. Competitor prices are never displayed.</div>':'');
+    box.innerHTML=`<div style="background:#fff;border:1px solid #e7eaf1;border-radius:16px;padding:22px;margin-bottom:20px;box-shadow:0 1px 2px rgba(16,24,40,.05),0 12px 28px -10px rgba(16,24,40,.12)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+        <div><div style="font-size:15px;font-weight:700;color:#0b1220">${round===2?'🏆 Round 2 — Best & Final Offer':'✍️ Round 1 — Rate Entry'}</div>
+          <div style="color:#6b7686;font-size:12.5px;margin-top:3px">${trk?'Enter per-trip equipment rates (1-ton / 3-ton / 20ft / 40ft) or LTL minimum + per-kg, plus customs. Do not mix bases in one lane.':'Enter minimum charge, base per-kg, FSC per-kg and adder per-kg in USD. All-in/kg is calculated for you.'} ${open?'':'<b style="color:#c0392b">This round is CLOSED — entries are read-only.</b>'}</div></div>
+        <div>${status}</div></div>
+      ${legend}
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#fafbfd">${th('Lane')}${cols.map(c=>th(c[1])).join('')}${trk?'':th('All-in /kg')}${showTargets?th('Target /kg')+th('Signal'):''}</tr></thead><tbody>${rows||'<tr><td colspan="12" style="padding:30px;text-align:center;color:#6b7686">No lanes defined for this RFQ.</td></tr>'}</tbody></table></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px">
+        <button onclick="fpDownloadExcel()" style="background:#fff;color:#0b1220;border:1px solid #e7eaf1;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:650;cursor:pointer;font-family:inherit">⭳ Reference Excel (lanes &amp; volumes)</button>
+        ${open?`<button onclick="fpSaveDraft()" style="background:#0b1220;color:#fff;border:0;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save draft</button>
+        <button onclick="fpSubmitFinal()" style="background:#cc092f;color:#fff;border:0;padding:10px 20px;border-radius:10px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px -4px rgba(204,9,47,.5)">🚀 Submit final bid${submitted?' (replace)':''}</button>`:''}
+        <span style="font-size:12px;color:#6b7686;margin-left:auto">Currency USD · ${trk?'per trip / per kg':'per kg'} · Deadline shown in the countdown above</span></div>
+      <div style="margin-top:12px;font-size:12px;color:#6b7686">A saved draft is not a submitted bid. Only the final submission status is included in completion and shortlisting. Need help? Email <a href="mailto:brcm-logistics-sg.pdl@broadcom.com" style="color:#cc092f">brcm-logistics-sg.pdl@broadcom.com</a> with the RFQ code, your company and the round number.</div>
+    </div>`;
+  };
+  window.fpRecalc=function(el){
+    const lid=el.dataset.fpl;const row=el.closest('tr');const get=k=>{const i=row.querySelector('[data-fpk="'+k+'"]');return i?num(i.value):null;};
+    const ai=get('bs')!=null?(get('bs')||0)+(get('fsc')||0)+(get('adder')||0):null;const cell=$('fpai_'+lid);if(cell)cell.innerHTML='<b>'+fmt(ai)+'</b>';
+    const sc=$('fpsig_'+lid);if(sc){const t=num(((window.FP_TARGETS)||{})[lid]);const sg=signal(ai,t);sc.innerHTML=sg?`<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:${sg[0]}"><span style="width:10px;height:10px;border-radius:50%;background:${sg[0]}"></span>${sg[1]}</span>`:'<span style="color:#8792a6">—</span>';}
+  };
+})();
+</script>
+
+<script>
+/* Protected session — 30-minute inactivity timeout (User Guide §2) */
+(function(){
+  const LIMIT = 30*60*1000, WARN = 28*60*1000; let last = Date.now(), warned = false;
+  const bump = () => { last = Date.now(); if(warned){ warned = false; const w = document.getElementById('fsIdleWarn'); if(w) w.remove(); } };
+  ['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(ev => document.addEventListener(ev, bump, {passive:true}));
+  setInterval(() => {
+    if(!sessionStorage.getItem('rfqmgr_auth_v3')) return;
+    const idle = Date.now() - last;
+    if(idle >= LIMIT){ try{ sessionStorage.removeItem('rfqmgr_auth_v3'); sessionStorage.setItem('fs_idle_notice','1'); }catch(e){} location.reload(); return; }
+    if(idle >= WARN && !warned){ warned = true; const w = document.createElement('div'); w.id='fsIdleWarn';
+      w.style.cssText='position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:100002;background:#fff7d6;color:#7a5a00;border:1px solid #ebd9a0;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2)';
+      w.textContent = 'Your session will end in 2 minutes due to inactivity — move the mouse or press a key to stay signed in.'; document.body.appendChild(w); }
+  }, 15000);
+})();
+</script>
+
 <!-- ============================================================
      END LOGIN & FORWARDER PORTAL
      ============================================================ -->
@@ -2416,7 +2692,7 @@ function render(){persist();setHeader();renderTabs();renderPicker();renderBrand(
   wire();}
 
 function stepper(){
-  const steps=[['Setup','setup',true],['Round 1','r1',R.round>=1],['Round 2','r2',R.r1.locked],['Evaluation','eval',R.r2.complete],['Winner','winner',false]];
+  const steps=[['Setup','setup',true],['Round 1','r1',R.r1.locked],['Round 2','r2',R.r2.complete],['Evaluation','eval',R.r2.complete&&R.ev.judges.every(j=>judgeProgress(j.id).complete)],['Winner','winner',!!R.rfqClosed],['Courier','courier',!!(R.wb&&Object.keys(R.wb.approved||{}).length)],['Award','wb',!!(R.wb&&R.wb.exportedAt)]];
   return `<div class="stepper">${steps.map(([t,id,done])=>`<div class="st ${TAB===id?'on':(done?'done':'')}"><div class="k">${done&&TAB!==id?'✓ done':(TAB===id?'current':'')}</div><div class="t">${t}</div></div>`).join('')}</div>`;
 }
 
@@ -2448,11 +2724,13 @@ function viewSetup(){
   </div>
 
   <div class="grid g2">
-   <div class="card"><div class="hd"><div><h2>Carriers joining Round 1</h2><div class="desc">How many forwarders are bidding.</div></div></div>
+   <div class="card"><div class="hd"><div><h2>Forwarders invited to Round 1</h2><div class="desc">Invited companies and their bid eligibility (Air, Trucking, or both). The company name must match the portal account's company exactly.</div></div></div>
     <div class="bd"><div id="carList">
      ${R.carriers.map((c,i)=>`<div class="flex wrapf" style="margin-bottom:8px">
         <input data-car="${c.id}" placeholder="Forwarder ${i+1}" value="${esc(c.name)}" style="flex:1;min-width:130px">
         <input data-caremail="${c.id}" type="email" placeholder="email@forwarder.com" value="${esc(c.email||'')}" style="flex:1.3;min-width:160px">
+        <select onchange="setElig('${c.id}',this.value)" title="Bid eligibility — which RFQ modes this company may open in the portal" style="width:auto;min-width:118px">
+          <option value="both" ${(c.elig||'both')==='both'?'selected':''}>Air + Trucking</option><option value="air" ${c.elig==='air'?'selected':''}>Air only</option><option value="trucking" ${c.elig==='trucking'?'selected':''}>Trucking only</option></select>
         <label class="small muted" style="white-space:nowrap"><input type="checkbox" style="width:auto" ${c.confirmed?'checked':''} onchange="toggleConfirm('${c.id}',this.checked)"> replied</label>
         <button class="del" onclick="delCar('${c.id}')">×</button></div>`).join('')}
      </div><button class="btn ghost sm" onclick="addCar()">+ Add carrier</button>
@@ -2494,18 +2772,18 @@ function viewSetup(){
 /* -------- ROUND 1 / 2 -------- */
 function viewRound(round){
   const parts=participants(round);
-  if(round===2 && !R.r1.locked) return emptyCard('Lock Round 1 and shortlist the top 3 first.');
-  R.submissions=R.submissions||{};
+  if(round===2 && !R.r1.locked) return emptyCard('Lock Round 1 and shortlist the Top N first.');
+  const SUBS=round===2?(R.submissions2=R.submissions2||{}):(R.submissions=R.submissions||{});
   R.baseline=R.baseline||{};
 
   // Count submissions (from R.submissions, not from rate grid)
-  const submitted=parts.filter(c=>R.submissions[c.id]);
+  const submitted=parts.filter(c=>SUBS[c.id]);
   const got=submitted.length, pend=parts.length-got;
   const allDone=got>=parts.length&&parts.length>0;
 
   // Best rate among submitted
   const bestRate=(()=>{
-    const rates=submitted.map(c=>{const s=R.submissions[c.id];return s?s.avgRate:null;}).filter(x=>x!=null);
+    const rates=submitted.map(c=>{const s=SUBS[c.id];return s?s.avgRate:null;}).filter(x=>x!=null);
     return rates.length?Math.min(...rates):null;
   })();
 
@@ -2520,16 +2798,16 @@ function viewRound(round){
   </div>
   ${viewBaselineUpload(round)}
   <div class="card"><div class="hd"><div><h2>Round ${round} — forwarder submissions</h2>
-    <div class="desc">${round===1?'Forwarders submit their rates via the Volumes tab (Combined pack & returns). Once all have submitted, proceed to Round 2 to select the top 3.'
-    :'Shortlisted forwarders resubmit best-and-final rates.'}</div></div>
-    ${round===1?`<button class="btn" onclick="lockR1()" ${!allDone?'disabled title="All forwarders must submit first"':''}>${allDone?'🔓 Proceed to Round 2 → Select Top 3':'⏳ Waiting for all submissions'}</button>`
-    :`<button class="btn teal" onclick="completeR2()" ${!allDone?'disabled':''}>Complete → open Evaluation</button>`}
+    <div class="desc">${round===1?'Sync submitted portal bids (or import returned Excel files on the Volumes tab). When every invited forwarder is submitted or formally excluded, lock Round 1 to shortlist the Top N by comparable landed cost.'
+    :'Shortlisted forwarders submit best-and-final rates in the portal against confidential lane targets. Sync their Round 2 bids, then complete the round to open evaluation.'}</div></div>
+    ${round===1?`<button class="btn" onclick="lockR1()" ${got<2?'disabled title="Need at least two submitted forwarders"':''}>${allDone?'🔒 Lock Round 1 → automatic Top '+(R.profile.shortlistN||3)+' shortlist':'⏳ Waiting for submissions (lock anyway to exclude non-bidders)'}</button>`
+    :`<button class="btn teal" onclick="completeR2()" ${got<1?'disabled title="Sync at least one Round 2 bid first"':''}>Complete → open Evaluation</button>`}
   </div>
    <div class="bd" style="padding:0;overflow:auto"><table>
      <thead><tr><th>Forwarder</th><th>Status</th><th class="num">Quoted</th><th class="num">Declined</th><th class="num">Truck</th><th class="num">Avg rate (USD/kg)</th><th>Submitted</th></tr></thead>
      <tbody>
        ${parts.map(c=>{
-         const sub=R.submissions[c.id];
+         const sub=SUBS[c.id];
          return `<tr>
            <td><b>${esc(c.name)}</b></td>
            <td>${sub?'<span class="pill done dot">Submitted</span>':'<span class="pill pending dot">Pending</span>'}</td>
@@ -3191,7 +3469,7 @@ function setLaneAward(scopeId, carrierId){
 }
 
 function closeRFQ(){
-  if(!confirm('Close this RFQ and lock all lane awards?\n\nYou can still download the award file after closing.'))return;
+  if(!confirm('Approve the final forwarder winners and close this RFQ?\n\nThis confirms the Round 2 winners and unlocks Courier Accounts and the Weight-Break & Award steps. You can still download award files after closing.'))return;
   R.rfqClosed=new Date().toLocaleString();
   persist();render();
   toast('RFQ closed — awards locked.');
@@ -3615,7 +3893,7 @@ function viewTools(){
      </tbody></table></div>
    </div>
   </div>`;
-  return calc+viewAirlineCard()+bench+lanes;
+  return calc+viewAirlineCard()+lanes;
 }
 function clearNew(id){const l=R.lanes.find(x=>x.id===id);if(l){l.isNew=false;render();}}
 function downloadAllLanes(){
@@ -4732,8 +5010,10 @@ const SUPABASE_URL = 'https://gbgxejgscquaovrxelfr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_rRFZ2LTo-pLYlagzygkTXQ_9U6y-d4f';
 let _supabase = null;
 try {
-  if (window.supabase && window.supabase.createClient) {
-    _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  if (window.getSB) _supabase = window.getSB();
+  else if (window.supabase && window.supabase.createClient) {
+    _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, window.FS_SB_OPTS || {auth:{persistSession:false}});
+    window.getSB = function(){ return _supabase; };
   }
 } catch(e) { console.warn('Supabase init failed:', e); }
 
@@ -5137,7 +5417,7 @@ setTimeout(() => {
   const SB_URL = 'https://gbgxejgscquaovrxelfr.supabase.co';
   const SB_KEY = 'sb_publishable_rRFZ2LTo-pLYlagzygkTXQ_9U6y-d4f';
   let sb = null;
-  function getSB(){ if(!sb && window.supabase) sb = window.supabase.createClient(SB_URL, SB_KEY); return sb; }
+  function getSB(){ if(window.getSB) return window.getSB(); if(!sb && window.supabase) sb = window.supabase.createClient(SB_URL, SB_KEY, window.FS_SB_OPTS || {auth:{persistSession:false}}); return sb; }
 
   // Show admin FAB when admin logged in
   function checkAdminMode() {
@@ -5789,4 +6069,747 @@ setTimeout(() => {
 </script>
 <!-- END ADMIN PANEL -->
 
+<script>
+/* ================================================================
+   FREIGHTSPHERE — FLOW MODULE (User Guide v2.0 alignment)
+   Extends the core app so the screens follow the Complete User Guide:
+   §3 eligibility / shortlist count · §4 round schedule · §5-7 portal bids,
+   automatic shortlist, Round-2 targets · §8 baseline template · §9 override
+   reason · §10 courier accounts · §11-12 courier vs winner weight-break ·
+   §13 two-sheet award workbook · §14 archive + 5-year report ·
+   §15-17 controls, security gate, troubleshooting.
+   ================================================================ */
+(function(){
+'use strict';
+
+/* ---------- constants ---------- */
+const FS_ACCOUNTS=[
+  {id:'fedex_my',provider:'FedEx',country:'MY',countryName:'Malaysia'},
+  {id:'fedex_sg',provider:'FedEx',country:'SG',countryName:'Singapore'},
+  {id:'dhl_tw',provider:'DHL Express',country:'TW',countryName:'Taiwan'},
+  {id:'dhl_my',provider:'DHL Express',country:'MY',countryName:'Malaysia'},
+  {id:'dhl_sg',provider:'DHL Express',country:'SG',countryName:'Singapore'},
+];
+const CTRY_CODE={'Malaysia':'MY','Singapore':'SG','Taiwan':'TW','Thailand':'TH','Vietnam':'VN','China':'CN','Hong Kong':'HK','Korea':'KR','Japan':'JP','Philippines':'PH','US':'US','Canada':'CA','Europe':'EU'};
+const ARCHIVE_KEY='fs_archive_v1';
+const GUIDE_STEPS=[
+  ['Prepare scope, current cost and volume data','setup'],
+  ['Assign each forwarder to Air, Trucking, or both','setup'],
+  ['Set Round 1 and Round 2 schedules','r1'],
+  ['Collect and lock Round 1 submissions','r1'],
+  ['Validate the automatic Top-N shortlist','r1'],
+  ['Publish Round 2 targets and collect best-and-final offers','r2'],
+  ['Complete three-evaluator scoring','eval'],
+  ['Approve cost/service weighting and category winners','winner'],
+  ['Load courier account base tariffs and weekly FSC','courier'],
+  ['Approve final weight-break routing and download award workbook','wb'],
+  ['Archive the completed RFQ for the rolling five-year report','summary'],
+];
+
+function ctryCode(code){const n=originCountry(code);return CTRY_CODE[n]||(n.length===2?n:'');}
+function fsUser(){try{return (JSON.parse(sessionStorage.getItem('rfqmgr_auth_v3')||'{}').u)||{};}catch(e){return {};}}
+function fsRole(){return fsUser().role||'admin';}
+function mondayOf(dateStr){const d=dateStr?new Date(dateStr+'T00:00:00'):new Date();const day=d.getDay();const diff=(day===0?-6:1-day);d.setDate(d.getDate()+diff);return d.toISOString().slice(0,10);}
+function isMonday(s){if(!s)return false;const d=new Date(s+'T00:00:00');return d.getDay()===1;}
+function sb(){return window.getSB?window.getSB():null;}
+
+/* ---------- data-model defaults ---------- */
+function ensureModel(){
+  R.profile.shortlistN=R.profile.shortlistN||3;
+  R.carriers.forEach(c=>{c.elig=c.elig||'both';});
+  R.r2targets=R.r2targets||{};
+  R.courier=R.courier||{week:{monday:'',year:''},accounts:{}};
+  FS_ACCOUNTS.forEach(a=>{R.courier.accounts[a.id]=R.courier.accounts[a.id]||{name:'',matrix:null,fscPct:null,fscMonday:'',fscYear:'',fileName:''};});
+  R.wb=R.wb||{approved:{}};
+  R.laneAwardReason=R.laneAwardReason||{};
+  R.submissions2=R.submissions2||{};
+}
+
+/* ================================================================
+   §3 SETUP — eligibility + shortlist count + guide map
+   ================================================================ */
+window.setElig=function(id,v){const c=carrier(id);if(c){c.elig=v;persist();toast((c.name||'Forwarder')+' → '+(v==='both'?'Air + Trucking':v==='air'?'Air only':'Trucking only'));}};
+window.setShortlistN=function(v){const n=Math.max(1,parseInt(v,10)||3);R.profile.shortlistN=n;persist();};
+
+function guideMapCard(){
+  const done=[
+    R.scope.length>0&&Object.keys((R.volumes||{}).data||{}).length>0,
+    activeCarriers().length>0,
+    !!(R.roundsCache&&R.roundsCache.some(r=>r.round_number===1)),
+    !!R.r1.locked, !!R.r1.locked, !!R.r2targetsPublished,
+    R.r2.complete&&R.ev.judges.every(j=>judgeProgress(j.id).complete),
+    !!R.rfqClosed, allAccountsReady().ready, wbAllApproved(), !!R.archived];
+  const cur=GUIDE_STEPS.findIndex((s,i)=>!done[i]);
+  return `<div class="card"><div class="hd"><div><h2>Guide map — recommended operating sequence</h2><div class="desc">Closed-loop sourcing workflow from the Complete User Guide. Green = done, red = current step.</div></div></div>
+  <div class="bd" style="padding:10px 18px"><ol style="margin:0;padding-left:20px;columns:2;column-gap:32px;font-size:13px;line-height:1.9">
+  ${GUIDE_STEPS.map((s,i)=>`<li style="break-inside:avoid;${done[i]?'color:var(--ok)':(i===cur?'color:var(--navy);font-weight:700':'color:var(--muted)')}"><a href="#" onclick="TAB='${s[1]}';render();return false" style="color:inherit;text-decoration:none">${done[i]?'✓ ':(i===cur?'▶ ':'')}${s[0]}</a></li>`).join('')}
+  </ol><div class="hint mt">${infoSVG()}<div><b>Governance:</b> never publish competitor pricing to forwarders. Round-2 target indicators give negotiation guidance while preserving bid confidentiality.</div></div></div></div>`;
+}
+function shortlistCard(){
+  return `<div class="card"><div class="hd"><div><h2>Round controls</h2><div class="desc">Shortlist count controls Round 2 access. Bid eligibility (Air / Trucking / both) is set per forwarder above and prevents a company opening an RFQ mode it is not assigned.</div></div></div>
+  <div class="bd"><div class="grid g3" style="align-items:end">
+    <div><label class="fld">Shortlist count (Top N)</label><input class="yellow" type="number" min="1" max="10" value="${R.profile.shortlistN||3}" onchange="setShortlistN(this.value)"></div>
+    <div><label class="fld">Currency</label><div style="padding:8px 0;font-weight:700">${esc(cur())}</div></div>
+    <div><label class="fld">Contract period</label><div style="padding:8px 0;font-weight:700">${esc(R.profile.from||'—')} → ${esc(R.profile.to||'—')}</div></div>
+  </div><div class="hint mt">${infoSVG()}<div><b>Data quality:</b> use consistent three-letter airport codes. For trucking keep corridor names aligned with the award categories used later.</div></div></div></div>`;
+}
+
+/* ================================================================
+   §4 ROUND SCHEDULE (reads rfq_rounds) + §5/6 PORTAL BID SYNC
+   ================================================================ */
+window.fsLoadRounds=async function(silent){
+  const s=sb();if(!s)return;
+  try{const {data,error}=await s.from('rfq_rounds').select('*').eq('rfq_id',R.id).order('round_number');if(error)throw error;R.roundsCache=data||[];persist();if(!silent)render();}
+  catch(e){if(!silent)toast('Rounds: '+e.message);}
+};
+function scheduleCard(round){
+  const rounds=R.roundsCache||[];const r=rounds.find(x=>x.round_number===round);
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const fmtDt=s=>s?new Date(s).toLocaleString(undefined,{weekday:'short',year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+  const closed=r&&new Date(r.close_at).getTime()<Date.now();
+  return `<div class="card"><div class="hd"><div><h2>Round ${round} schedule</h2><div class="desc">Opening / closing date-time published to the forwarder portal. When the countdown reaches 00:00:00 the portal switches to CLOSED and hides the submit action.</div></div>
+    <div class="row-actions"><button class="btn ghost sm no-print" onclick="fsLoadRounds()">↻ Refresh</button>${fsRole()==='admin'?`<button class="btn sm no-print" onclick="openAdminPanel();setTimeout(()=>{const b=document.querySelector('.adm-tab');if(b)admTab({target:b},'rounds');},50)">⏱ RFQ Rounds control</button>`:''}</div></div>
+   <div class="bd"><div class="statgrid">
+    <div class="stat"><div class="lab">Opens</div><div class="val" style="font-size:15px">${fmtDt(r&&r.open_at)}</div></div>
+    <div class="stat"><div class="lab">Closes</div><div class="val" style="font-size:15px">${fmtDt(r&&r.close_at)}</div><div class="sub">${r?(closed?'<span class="pill pending dot">CLOSED</span>':'<span class="pill done dot">PUBLISHED · OPEN</span>'):'<span class="pill pending dot">not scheduled</span>'}</div></div>
+    <div class="stat"><div class="lab">Timezone</div><div class="val" style="font-size:15px">${esc(tz)}</div><div class="sub">verify against the note sent to forwarders</div></div>
+    <div class="stat"><div class="lab">Instruction note</div><div class="val" style="font-size:13px;font-weight:500">${esc((r&&(r.notes||r.instructions))||'—')}</div></div>
+   </div>${round===2?`<div class="hint mt">${infoSVG()}<div>Round 2 can be scheduled in advance but remains accessible only to shortlisted forwarders.</div></div>`:''}</div></div>`;
+}
+
+/* --- portal bid ingestion --- */
+function findCarrierByCompany(name){const n=(name||'').trim().toLowerCase();return activeCarriers().find(c=>c.name.trim().toLowerCase()===n);}
+function ingestPortalBid(bid){
+  const c=findCarrierByCompany(bid.forwarder_company);
+  if(!c)return {ok:false,msg:'No carrier named "'+bid.forwarder_company+'" in Setup'};
+  const round=bid.round_number||1;const rates=bid.rates||{};
+  R.returnsList=(R.returnsList||[]).filter(x=>!(x.forwarder===c.name&&(x.round||1)===round));
+  let air=0,trk=0;const rd_=rd(round);rd_.rates[c.id]={};
+  const airVals=[];
+  Object.keys(rates.air||{}).forEach(lid=>{const v=rates.air[lid];const sc=R.scope.find(s=>s.id===lid)||R.scope.find(s=>(s.orig||'').toUpperCase()===(v.origin||'').toUpperCase()&&(s.dest||'').toUpperCase()===(v.dest||'').toUpperCase());
+    if(v.bs==null&&v.min==null)return;
+    R.returnsList.push({id:uid(),round,forwarder:c.name,origin:v.origin||(sc&&sc.orig)||'',dest:v.dest||(sc&&sc.dest)||'',group:'',mode:'air',airline:v.airline||'',tat:num(v.tat),min:num(v.min),bs:num(v.bs),fsc:num(v.fsc),adder:num(v.adder),rem:v.rem||''});
+    const allin=(num(v.bs)||0)+(num(v.fsc)||0)+(num(v.adder)||0);
+    if(sc&&allin>0){rd_.rates[c.id][sc.id]=allin;airVals.push(allin);}air++;});
+  Object.keys(rates.trucking||{}).forEach(lid=>{const v=rates.trucking[lid];const sc=R.scope.find(s=>s.id===lid);
+    if([v.r1t,v.r3t,v.r20,v.r40,v.ltlmin].every(x=>num(x)==null))return;
+    R.returnsList.push({id:uid(),round,forwarder:c.name,origin:v.origin||'',dest:v.dest||'',group:v.group||(sc&&sc.name)||'',mode:'trucking',tat:num(v.tat),r1t:num(v.r1t),r3t:num(v.r3t),r20:num(v.r20),r40:num(v.r40),ltlmin:num(v.ltlmin),ltlpk:num(v.ltlpk),customs:num(v.customs),rem:v.rem||''});
+    const ai=cmpAllIn({r1t:v.r1t,r3t:v.r3t,r20:v.r20,r40:v.r40,ltlmin:v.ltlmin,ltlpk:v.ltlpk,customs:v.customs},'trucking',num((R.cmp||{}).wt)||100);
+    if(sc&&ai!=null)rd_.rates[c.id][sc.id]=ai;trk++;});
+  const avg=airVals.length?airVals.reduce((a,b)=>a+b,0)/airVals.length:null;
+  const rec={date:new Date(bid.submitted_at||Date.now()).toLocaleString(),airLanes:air,airDeclined:Math.max(0,R.scope.filter(s=>s.orig).length-air),trkLanes:trk,avgRate:avg,fileName:'Portal bid ('+(bid.forwarder_username||'')+')',source:'portal',submittedAt:bid.submitted_at};
+  if(round===2)R.submissions2[c.id]=rec;else{R.submissions=R.submissions||{};R.submissions[c.id]=rec;}
+  return {ok:true,msg:c.name+': '+air+' air + '+trk+' trucking lines'};
+}
+window.fsSyncPortalBids=async function(round){
+  const s=sb();if(!s){toast('Supabase not loaded.');return;}
+  try{
+    const {data,error}=await s.from('forwarder_rates').select('*').eq('rfq_id',R.id).eq('round_number',round).eq('status','submitted');
+    if(error)throw error;
+    if(!data||!data.length){toast('No submitted Round '+round+' bids in the portal yet.');return;}
+    const out=data.map(ingestPortalBid);persist();render();
+    const ok=out.filter(x=>x.ok).length;
+    toast('Synced '+ok+'/'+data.length+' portal bid(s)'+(out.some(x=>!x.ok)?' — '+out.filter(x=>!x.ok).map(x=>x.msg).join('; '):''));
+    if(window.logAudit)logAudit(R.id,'portal_sync','Round '+round+' portal bids synchronised ('+ok+')',{count:ok});
+  }catch(e){toast('Portal sync failed: '+e.message+(/relation|does not exist/i.test(e.message)?' — create the forwarder_rates table (see Tools → Security & deployment).':''));}
+};
+
+/* --- §6 lockR1 replacement: Top-N by comparable landed cost + push status to portal --- */
+window.lockR1=function(){
+  R.submissions=R.submissions||{};const N=R.profile.shortlistN||3;
+  const ranked=activeCarriers().filter(c=>R.submissions[c.id]).map(c=>({id:c.id,t:R.submissions[c.id].avgRate||carrierTotal(1,c.id)})).filter(x=>x.t!=null).sort((a,b)=>a.t-b.t);
+  if(ranked.length<2){toast('Need at least 2 submitted forwarders.');return;}
+  const missing=activeCarriers().filter(c=>!R.submissions[c.id]);
+  if(missing.length&&!confirm(missing.length+' forwarder(s) have not submitted: '+missing.map(c=>c.name).join(', ')+'.\nTreat them as formally excluded and lock Round 1?'))return;
+  R.r1.shortlist=ranked.slice(0,N).map(x=>x.id);R.r1.locked=true;R.r1.lockedAt=new Date().toISOString();R.round=2;
+  // default Round-2 targets = best comparable Round-1 all-in per lane
+  R.r2targets=R.r2targets||{};
+  R.scope.forEach(sc=>{const best=Math.min(...activeCarriers().map(c=>rateOf(1,c.id,sc.id)).filter(x=>x!=null&&x>0));if(isFinite(best)&&R.r2targets[sc.id]==null)R.r2targets[sc.id]=+best.toFixed(3);});
+  persist();
+  toast('Top '+N+' shortlisted: '+R.r1.shortlist.map(id=>(carrier(id)||{}).name).join(', '));
+  if(window.logAudit)logAudit(R.id,'round_lock','Round 1 locked — Top '+N+': '+R.r1.shortlist.map(id=>(carrier(id)||{}).name).join(', '),{shortlist:R.r1.shortlist.length});
+  fsPushShortlist(true);
+  TAB='r1';render();
+};
+window.fsPushShortlist=async function(quiet){
+  const s=sb();if(!s){if(!quiet)toast('Supabase not loaded.');return;}
+  try{
+    const {data:users,error}=await s.from('forwarder_users').select('username,company_name').eq('user_type','forwarder');if(error)throw error;
+    const me=fsUser().username||'admin';const rows=[];const unmatched=[];
+    activeCarriers().forEach(c=>{const u=(users||[]).filter(x=>(x.company_name||'').trim().toLowerCase()===c.name.trim().toLowerCase());
+      if(!u.length){unmatched.push(c.name);return;}
+      const st=R.r1.shortlist.includes(c.id)?'passed':'failed';
+      u.forEach(x=>rows.push({rfq_id:R.id,round_number:1,forwarder_username:x.username,forwarder_company:x.company_name,status:st,decided_by:me,decided_at:new Date().toISOString()}));});
+    if(rows.length){const {error:e2}=await s.from('forwarder_round_status').upsert(rows,{onConflict:'rfq_id,round_number,forwarder_username'});if(e2)throw e2;}
+    R.r1.statusPushedAt=new Date().toISOString();persist();
+    toast('Shortlist status pushed to portal for '+rows.length+' account(s)'+(unmatched.length?' — no portal account for: '+unmatched.join(', '):''));
+    if(TAB==='r1')render();
+  }catch(e){toast('Push shortlist failed: '+e.message);}
+};
+
+/* --- Round-2 targets --- */
+window.fsSetTarget=function(sid,v){R.r2targets=R.r2targets||{};const n=num(v);if(n==null)delete R.r2targets[sid];else R.r2targets[sid]=n;R.r2targetsPublished=false;persist();};
+window.fsPublishTargets=async function(){
+  const n=R.scope.filter(s=>R.r2targets&&R.r2targets[s.id]!=null).length;
+  if(!n){toast('Enter at least one lane target first.');return;}
+  R.r2targetsPublished=true;R.r2targetsPublishedAt=new Date().toISOString();persist();render();
+  if(window.logAudit)logAudit(R.id,'targets_published','Round 2 targets published for '+n+' lanes',{lanes:n});
+  if(typeof cloudSyncUp==='function'){await cloudSyncUp();}
+  toast('Targets published to the portal for '+n+' lane(s). Competitor prices are never shown.');
+};
+function targetsCard(){
+  if(!R.r1.locked)return '';
+  const rows=R.scope.filter(s=>s.name.trim()).map(sc=>{const best=Math.min(...activeCarriers().map(c=>rateOf(1,c.id,sc.id)).filter(x=>x!=null&&x>0));
+    return `<tr><td><b>${esc(sc.name)}</b></td><td class="num">${isFinite(best)?fmt(best,3):'—'}</td><td class="num"><input class="mini yellow" style="width:90px" value="${R.r2targets[sc.id]??''}" onchange="fsSetTarget('${sc.id}',this.value)"></td></tr>`;}).join('');
+  return `<div class="card"><div class="hd"><div><h2>Round 2 targets — confidential guidance</h2><div class="desc">Default = best Round-1 comparable rate per lane. Forwarders see only their own signal (Blue / Green / Amber / Red) against the target, never competitor prices.</div></div>
+    <div class="row-actions">${R.r2targetsPublished?'<span class="pill done dot">Published '+esc(new Date(R.r2targetsPublishedAt||Date.now()).toLocaleString())+'</span>':'<span class="pill pending dot">Not published</span>'}<button class="btn no-print" onclick="fsPublishTargets()">📣 Publish targets to portal</button></div></div>
+   <div class="bd" style="padding:0;overflow:auto"><table><thead><tr><th>Lane</th><th class="num">Best R1 (${esc(cur())}/kg)</th><th class="num">Target (${esc(cur())}/kg)</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <div class="bd" style="padding-top:0"><div class="flex wrapf small" style="gap:14px">${sigLegend()}</div></div></div>`;
+}
+function sigLegend(){return [['#1d4ed8','Blue','meets or beats target'],['#12805c','Green','within 2% above'],['#b45309','Amber','2–5% above'],['#c0392b','Red','>5% above']].map(x=>`<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${x[0]};margin-right:6px"></span><b>${x[1]}</b> — ${x[2]}</span>`).join('');}
+
+function closureChecklist(){
+  if(!R.r1.locked)return '';
+  const subs=R.submissions||{};const parts=activeCarriers();
+  const allSub=parts.every(c=>subs[c.id]);
+  const lines=(R.returnsList||[]).filter(r=>r.mode==='air'&&(r.round||1)===1);
+  const mins=lines.map(r=>num(r.min)).filter(x=>x!=null);const med=mins.length?mins.sort((a,b)=>a-b)[Math.floor(mins.length/2)]:null;
+  const outliers=med?lines.filter(r=>num(r.min)!=null&&(num(r.min)>med*3||num(r.min)<med/3)).length:0;
+  const incomplete=parts.filter(c=>subs[c.id]&&subs[c.id].airDeclined>0).length;
+  const rowsOK=[
+    ['Submission status',allSub?'All invited forwarders submitted':'Some forwarders excluded/declined — confirm formally',allSub],
+    ['Comparable cost','Rates compared on all-in '+cur()+'/kg over the same lane scope',true],
+    ['Minimum charges',outliers?outliers+' abnormal minimum charge(s) vs median '+fmt(med,0):'No minimum-charge outliers detected',!outliers],
+    ['Incomplete lanes',incomplete?incomplete+' forwarder(s) declined lanes — review coverage':'Full lane coverage',!incomplete],
+    ['Access test',R.r1.statusPushedAt?'Shortlist status pushed '+new Date(R.r1.statusPushedAt).toLocaleString()+' — test a shortlisted and a non-shortlisted account':'Status not yet pushed to the portal',!!R.r1.statusPushedAt]];
+  return `<div class="card"><div class="hd"><div><h2>Shortlist closure check</h2><div class="desc">Administrator check before confirming the shortlist. Automatic ranking should not replace commercial validation.</div></div><button class="btn ghost sm no-print" onclick="fsPushShortlist()">↑ Re-push shortlist status</button></div>
+   <div class="bd" style="padding:0"><table><thead><tr><th>Check</th><th>Result</th><th></th></tr></thead><tbody>${rowsOK.map(r=>`<tr><td><b>${r[0]}</b></td><td class="small">${esc(r[1])}</td><td>${r[2]?'<span class="pill done dot">OK</span>':'<span class="pill pending dot">Review</span>'}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+window.fsDownloadBaselineTemplate=function(){
+  if(!window.ExcelJS){toast('ExcelJS not loaded.');return;}
+  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('Current Cost');
+  ws.columns=[{width:10},{width:8},{width:8},{width:12},{width:16},{width:10}];
+  const t=ws.addRow([rfqCode()+' — CURRENT COST BASELINE']);t.getCell(1).style=XS.title;ws.mergeCells(1,1,1,6);
+  const h=ws.addRow(['Mode','Origin','Destination','Lane','Current all-in rate','Currency']);h.eachCell(c=>c.style=XS.header);
+  R.scope.forEach(s=>{ws.addRow([isAir()?'AIR':'TRUCKING',s.orig||'',s.dest||'',(s.orig&&s.dest)?s.orig+'-'+s.dest:s.name,'',cur()]).eachCell((c,i)=>c.style=i===5?XS.cellYellow:XS.cell);});
+  ws.views=[{state:'frozen',ySplit:2}];xlSaveAs(wb,rfqCode()+'_Current_Cost_Template.xlsx');
+};
+
+/* ---------- viewRound wrapper ---------- */
+const viewRound_base=window.viewRound;
+window.viewRound=function(round){
+  ensureModel();
+  let html=viewRound_base(round);
+  if(round===2&&!R.r1.locked)return html;
+  const sync=`<div class="card"><div class="hd"><div><h2>Portal bids — Round ${round}</h2><div class="desc">Forwarders save drafts and submit final bids in the portal. Only <b>submitted</b> bids are included in completion and shortlisting; a saved draft is not a bid.</div></div>
+    <div class="row-actions"><button class="btn teal no-print" onclick="fsSyncPortalBids(${round})">☁ Sync portal bids</button></div></div>
+    <div class="bd small muted">Manual Excel returns imported on the Volumes tab remain supported. Synced bids overwrite that forwarder's lines for this round.</div></div>`;
+  const tmpl=`<div class="hint" style="margin-bottom:16px">${infoSVG()}<div><b>Current-cost baseline:</b> <a href="#" onclick="fsDownloadBaselineTemplate();return false">download the template</a> (Mode · Origin · Destination · Lane · Current all-in rate · Currency), then upload it below. Confirm matched-lane coverage before using savings for approval.</div></div>`;
+  html=scheduleCard(round)+sync+(round===1?tmpl:'')+html;
+  if(round===1)html+=targetsCard()+closureChecklist();
+  if(round===2)html+=`<div class="card"><div class="hd"><div><h2>Target signal legend (what shortlisted forwarders see)</h2></div></div><div class="bd"><div class="flex wrapf small" style="gap:14px">${sigLegend()}</div><div class="small muted mt">${R.r2targetsPublished?'Targets published '+esc(new Date(R.r2targetsPublishedAt).toLocaleString()):'Targets not yet published — go to Round 1 tab → Round 2 targets.'}</div></div></div>`;
+  return html;
+};
+
+/* ================================================================
+   §9 WINNER — override reason + award grouping
+   ================================================================ */
+const setLaneAward_base=window.setLaneAward;
+window.setLaneAward=function(sid,cid){
+  const round=R.r2.complete?2:1;const rates=activeCarriers().map(f=>({id:f.id,r:rateOf(round,f.id,sid)})).filter(x=>x.r!=null&&x.r>0).sort((a,b)=>a.r-b.r);
+  const isDefault=rates.length&&rates[0].id===cid;R.laneAwardReason=R.laneAwardReason||{};
+  if(!isDefault){const why=prompt('Manual override — enter the written commercial reason (required, will be logged):','');if(!why||!why.trim()){toast('Override cancelled — a written reason is required.');return;}
+    R.laneAwardReason[sid]={reason:why.trim(),by:fsUser().username||'admin',at:new Date().toISOString()};
+    if(window.logAudit)logAudit(R.id,'award_override','Lane '+((R.scope.find(s=>s.id===sid)||{}).name||sid)+' awarded to '+((carrier(cid)||{}).name||cid)+' — '+why.trim(),{sid,cid});}
+  else delete R.laneAwardReason[sid];
+  return setLaneAward_base(sid,cid);
+};
+function truckCategory(o,d){const oc=originCountry(o),dc=originCountry(d);
+  if(oc==='Taiwan')return 'Taiwan trucking (Taiwan domestic / TPE-TPE)';
+  if(oc==='Singapore'&&dc==='Malaysia')return 'Singapore trucking (Singapore to Malaysia)';
+  if(oc==='Malaysia')return 'Malaysia trucking (Malaysia domestic)';
+  if(oc==='Thailand')return 'Thailand trucking (Thailand to Malaysia)';
+  if(oc==='Vietnam')return 'Vietnam trucking (Vietnam to Malaysia)';
+  return oc+' trucking';}
+const viewWinner_base=window.viewWinner;
+window.viewWinner=function(){
+  ensureModel();
+  const overrides=Object.keys(R.laneAwardReason||{}).filter(sid=>R.laneAward&&R.laneAward[sid]);
+  const grouping=`<div class="card"><div class="hd"><div><h2>Award grouping &amp; approval</h2><div class="desc">Cost-versus-service ratio currently <b>${R.ev.weights.cost}% cost / ${R.ev.weights.service}% service</b> (set on the Evaluation tab). Evaluation completion: <b>${R.ev.judges.filter(j=>judgeProgress(j.id).complete).length}/${R.ev.judges.length}</b>.</div></div></div>
+   <div class="bd" style="padding:0"><table><thead><tr><th>Award grouping</th><th>System approach</th></tr></thead><tbody>
+   <tr><td><b>Airfreight per-kg</b></td><td>Grouped by origin country and airport code</td></tr>
+   <tr><td><b>Taiwan trucking</b></td><td>Taiwan domestic / TPE-TPE</td></tr><tr><td><b>Singapore trucking</b></td><td>Singapore to Malaysia</td></tr>
+   <tr><td><b>Malaysia trucking</b></td><td>Malaysia domestic</td></tr><tr><td><b>Thailand trucking</b></td><td>Thailand to Malaysia</td></tr><tr><td><b>Vietnam trucking</b></td><td>Vietnam to Malaysia</td></tr></tbody></table></div>
+   ${overrides.length?`<div class="bd" style="padding-top:0"><div class="section-title">Manual overrides (written reason logged)</div><table><thead><tr><th>Lane</th><th>Awarded to</th><th>Reason</th><th>By / when</th></tr></thead><tbody>${overrides.map(sid=>{const o=R.laneAwardReason[sid];return `<tr><td><b>${esc((R.scope.find(s=>s.id===sid)||{}).name||sid)}</b></td><td>${esc((carrier(R.laneAward[sid])||{}).name||'')}</td><td class="small">${esc(o.reason)}</td><td class="small muted">${esc(o.by)} · ${esc(new Date(o.at).toLocaleString())}</td></tr>`;}).join('')}</tbody></table></div>`:''}
+   <div class="bd" style="padding-top:0"><div class="hint">${infoSVG()}<div>Use manual override only with a written commercial reason and appropriate approval. Closing the RFQ below confirms the final forwarder winners and unlocks the courier account setup.</div></div></div></div>`;
+  return grouping+viewWinner_base();
+};
+
+/* ================================================================
+   §10 COURIER ACCOUNTS
+   ================================================================ */
+function acctStatus(a){
+  const c=R.courier.accounts[a.id];const wk=R.courier.week||{};const issues=[];
+  if(!c.matrix||!c.matrix.dests||!c.matrix.dests.length)issues.push('base tariff missing');
+  if(num(c.fscPct)==null)issues.push('FSC % missing');
+  if(!c.fscMonday)issues.push('FSC effective Monday missing');else if(!isMonday(c.fscMonday))issues.push('FSC date is not a Monday');
+  if(!c.fscYear)issues.push('FSC year missing');
+  if(!wk.monday)issues.push('benchmark week not selected');
+  else{if(c.fscMonday&&c.fscMonday!==wk.monday)issues.push('FSC week ≠ benchmark week ('+c.fscMonday+' vs '+wk.monday+')');
+       if(c.fscYear&&String(c.fscYear)!==String(wk.year))issues.push('FSC year ≠ benchmark year');}
+  return {ready:!issues.length,issues};
+}
+function allAccountsReady(){const st=FS_ACCOUNTS.map(a=>({a,s:acctStatus(a)}));return {ready:st.every(x=>x.s.ready),list:st};}
+function neededCountries(){return [...new Set(R.scope.filter(s=>s.orig).map(s=>ctryCode(s.orig)))].filter(Boolean);}
+window.fsSetWeek=function(k,v){R.courier.week=R.courier.week||{};if(k==='monday'){const m=v?mondayOf(v):'';R.courier.week.monday=m;if(m)R.courier.week.year=m.slice(0,4);if(v&&m!==v)toast('Snapped to the Monday of that week: '+m);}else R.courier.week[k]=v;persist();render();};
+window.fsSetAcct=function(id,k,v){const c=R.courier.accounts[id];if(!c)return;if(k==='fscPct')c.fscPct=num(v);else if(k==='fscMonday'){const m=v?mondayOf(v):'';c.fscMonday=m;if(m&&!c.fscYear)c.fscYear=m.slice(0,4);}else c[k]=v;persist();render();};
+window.fsClearAcct=function(id){if(!confirm('Clear the base tariff for this account?'))return;const c=R.courier.accounts[id];c.matrix=null;c.fileName='';persist();render();};
+
+function parseMatrix(aoa){
+  let hr=-1;for(let i=0;i<Math.min(aoa.length,15);i++){const c0=String((aoa[i]||[])[0]||'').toLowerCase();if(c0.includes('weight')||c0.includes('kg')||c0.includes('break')){hr=i;break;}}
+  if(hr<0)throw new Error('Header row not found — first column must be "Weight (kg)".');
+  const H=aoa[hr];const dests=[];const destIdx=[];
+  for(let j=1;j<H.length;j++){const d=String(H[j]||'').trim().toUpperCase();if(d){dests.push(d);destIdx.push(j);}}
+  if(!dests.length)throw new Error('No destination columns found after "Weight (kg)".');
+  const breaks=[],bands=[];
+  for(let i=hr+1;i<aoa.length;i++){const row=aoa[i]||[];const lab=String(row[0]??'').trim();if(!lab)continue;
+    const vals={};let any=false;destIdx.forEach((j,k)=>{const v=num(row[j]);if(v!=null){vals[dests[k]]=v;any=true;}});if(!any)continue;
+    const n=num(lab);if(n!=null){breaks.push({w:n,vals});continue;}
+    let m=lab.match(/(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)/);if(m){bands.push({lo:+m[1],hi:+m[2],vals,label:lab});continue;}
+    m=lab.match(/(\d+(?:\.\d+)?)\s*\+/);if(m){bands.push({lo:+m[1],hi:Infinity,vals,label:lab});continue;}
+    m=lab.match(/>\s*(\d+(?:\.\d+)?)/);if(m){bands.push({lo:+m[1],hi:Infinity,vals,label:lab});}}
+  breaks.sort((a,b)=>a.w-b.w);bands.sort((a,b)=>a.lo-b.lo);
+  return {dests,breaks,bands,maxBreak:breaks.length?breaks[breaks.length-1].w:0};
+}
+window.fsUploadMatrix=function(id,ev){
+  const f=ev.target.files[0];if(!f)return;if(!window.XLSX){toast('SheetJS not loaded.');ev.target.value='';return;}
+  const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    let sn=wb.SheetNames.find(n=>/tariff|base|rate/i.test(n))||wb.SheetNames[0];
+    const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});const m=parseMatrix(aoa);
+    const c=R.courier.accounts[id];c.matrix=m;c.fileName=f.name;c.loadedAt=new Date().toISOString();persist();render();
+    toast(id.toUpperCase()+': '+m.dests.length+' destination(s), '+m.breaks.length+' weight breaks, '+m.bands.length+' per-kg bands.');
+    if(window.logAudit)logAudit(R.id,'courier_tariff','Base tariff loaded for '+id+' ('+f.name+')',{dests:m.dests.length});}
+    catch(err){toast('Tariff not read: '+err.message);}};
+  r.readAsArrayBuffer(f);ev.target.value='';
+};
+window.fsDownloadAcctTemplate=function(id){
+  if(!window.ExcelJS){toast('ExcelJS not loaded.');return;}
+  const a=FS_ACCOUNTS.find(x=>x.id===id);const wb=new ExcelJS.Workbook();wb.creator='Broadcom Procurement';
+  const ws=wb.addWorksheet('Base Tariff');
+  const dests=[...new Set(R.scope.filter(s=>s.orig&&s.dest&&ctryCode(s.orig)===a.country).map(s=>(s.dest||'').toUpperCase()))];
+  const cols=dests.length?dests:['PEN','SIN','TPE'];
+  ws.columns=[{width:16}].concat(cols.map(()=>({width:12})));
+  const t=ws.addRow([rfqCode()+' — '+a.provider+' '+a.country+' ACCOUNT BASE TARIFF (excl. FSC)']);t.getCell(1).style=XS.title;ws.mergeCells(1,1,1,cols.length+1);
+  const s2=ws.addRow(['Per-shipment charge for each weight break (0.5–20 kg); per-kg rate for the bands below. One column per destination airport code (or country code). Currency: '+cur()]);s2.getCell(1).style=XS.subtitle;ws.mergeCells(2,1,2,cols.length+1);ws.getRow(2).height=30;
+  ws.addRow([]);
+  const h=ws.addRow(['Weight (kg)'].concat(cols));h.eachCell(c=>c.style=XS.header);
+  const rows=[];for(let w=0.5;w<=20;w+=0.5)rows.push(w);
+  rows.forEach((w,i)=>{ws.addRow([w].concat(cols.map(()=>''))).eachCell((c,ci)=>c.style=ci===1?XS.cell:XS.cellYellow);});
+  ['21-44 /kg','45-70 /kg','71-99 /kg','100-299 /kg','300+ /kg'].forEach(b=>ws.addRow([b].concat(cols.map(()=>''))).eachCell((c,ci)=>c.style=ci===1?XS.cellAlt:XS.cellYellow));
+  ws.views=[{state:'frozen',ySplit:4,xSplit:1}];
+  xlSaveAs(wb,rfqCode()+'_'+a.provider.replace(/\s/g,'')+'_'+a.country+'_Base_Tariff_Template.xlsx');
+};
+function courierBase(m,dest,destCtry,w){
+  if(!m)return null;const col=m.dests.includes((dest||'').toUpperCase())?(dest||'').toUpperCase():(m.dests.includes(destCtry)?destCtry:null);if(!col)return null;
+  if(m.breaks.length&&w<=m.maxBreak){const b=m.breaks.find(x=>x.w>=w-1e-9);const v=b&&b.vals[col];return v!=null?v:null;}
+  const band=m.bands.find(x=>w>=x.lo-1e-9&&w<=x.hi+1e-9);const v=band&&band.vals[col];return v!=null?v*w:null;
+}
+window.viewCourierAccounts=function(){
+  ensureModel();
+  if(!R.rfqClosed)return emptyCard('Confirm the final per-kg forwarder winners first (Winner & Award → Close RFQ). Courier account setup starts after Round 2.');
+  const wk=R.courier.week||{};const need=neededCountries();const st=allAccountsReady();
+  const readyN=st.list.filter(x=>x.s.ready).length;
+  const stats=`<div class="statgrid" style="margin-bottom:20px">
+    <div class="stat"><div class="lab">Benchmark week</div><div class="val" style="font-size:16px">${wk.monday?esc(wk.monday):'—'}</div><div class="sub">Monday · year ${esc(wk.year||'—')}</div></div>
+    <div class="stat"><div class="lab">Accounts ready</div><div class="val" style="color:${readyN===5?'var(--ok)':'var(--amber)'}">${readyN}/5</div><div class="sub">base tariff + weekly FSC current</div></div>
+    <div class="stat"><div class="lab">Origin countries in scope</div><div class="val" style="font-size:16px">${need.join(', ')||'—'}</div><div class="sub">accounts needed for comparison</div></div>
+    <div class="stat"><div class="lab">Access</div><div class="val" style="font-size:16px">Internal only</div><div class="sub">forwarders never see courier data</div></div></div>`;
+  const weekCard=`<div class="card"><div class="hd"><div><h2>Benchmark week</h2><div class="desc">Select the week by its Monday date and confirm the year. Every account's FSC effective Monday and year must match this week — never reuse a prior week silently.</div></div></div>
+   <div class="bd"><div class="grid g3" style="align-items:end">
+    <div><label class="fld">Benchmark Monday</label><input class="yellow" type="date" value="${esc(wk.monday||'')}" onchange="fsSetWeek('monday',this.value)"></div>
+    <div><label class="fld">Year</label><input class="yellow" type="number" value="${esc(wk.year||'')}" onchange="fsSetWeek('year',this.value)"></div>
+    <div><button class="btn ghost" onclick="fsSetWeek('monday','${mondayOf()}')">Use this week (${mondayOf()})</button></div></div></div></div>`;
+  const cards=FS_ACCOUNTS.map(a=>{const c=R.courier.accounts[a.id];const s=acctStatus(a);const needed=need.includes(a.country);const m=c.matrix;
+    return `<div class="card" style="border-left:4px solid ${s.ready?'var(--ok)':(needed?'var(--navy)':'var(--line)')}"><div class="hd"><div><h2>${esc(a.provider)} — ${esc(a.countryName)} (${a.country}) account</h2>
+      <div class="desc">${needed?'Required — lanes originate in '+a.countryName+'.':'Not required by current scope.'} ${m?`Loaded: ${esc(c.fileName)} · ${m.dests.length} dest · ${m.breaks.length} breaks · ${m.bands.length} bands`:''}</div></div>
+      <div>${s.ready?'<span class="pill done dot">Ready</span>':'<span class="pill pending dot">Action Required</span>'}</div></div>
+     <div class="bd"><div class="grid g4" style="align-items:end">
+      <div><label class="fld">Account name / number</label><input class="yellow" value="${esc(c.name||'')}" placeholder="e.g. ${a.provider} ${a.country} main" onchange="fsSetAcct('${a.id}','name',this.value)"></div>
+      <div><label class="fld">Weekly FSC %</label><input class="yellow" value="${c.fscPct??''}" placeholder="e.g. 27.5" onchange="fsSetAcct('${a.id}','fscPct',this.value)"></div>
+      <div><label class="fld">FSC effective Monday</label><input class="yellow" type="date" value="${esc(c.fscMonday||'')}" onchange="fsSetAcct('${a.id}','fscMonday',this.value)"></div>
+      <div><label class="fld">FSC year</label><input class="yellow" type="number" value="${esc(c.fscYear||'')}" onchange="fsSetAcct('${a.id}','fscYear',this.value)"></div></div>
+      <div class="row-actions mt no-print">
+       <button class="btn ghost sm" onclick="fsDownloadAcctTemplate('${a.id}')">⭳ ${esc(a.provider)} account template</button>
+       <label class="btn sm" style="cursor:pointer;margin:0">⭱ Load contracted base tariff<input type="file" class="hide" accept=".xlsx,.xls,.csv" onchange="fsUploadMatrix('${a.id}',event)"></label>
+       ${m?`<button class="btn danger sm" onclick="fsClearAcct('${a.id}')">Clear tariff</button>`:''}</div>
+      ${s.issues.length?`<div class="small" style="color:var(--amber);margin-top:10px">⚠ ${s.issues.map(esc).join(' · ')}</div>`:'<div class="small mt" style="color:var(--ok)">✓ Both components current for the benchmark week — eligible for comparison.</div>'}
+     </div></div>`;}).join('');
+  const rule=`<div class="hint" style="margin-top:4px">${infoSVG()}<div><b>Weekly control:</b> missing, stale or week-mismatched information shows <b>Action Required</b> and is excluded from the comparison. Courier cost at weight = account base charge + (base charge × matching weekly FSC %).</div></div>`;
+  return stats+weekCard+cards+rule;
+};
+
+/* ================================================================
+   §11-12 COURIER vs FINAL RFQ WINNER — WEIGHT-BREAK TABLE
+   ================================================================ */
+function fsRetLine(fwdName,orig,dest,round){
+  const L=(R.returnsList||[]).filter(r=>r.mode==='air'&&r.forwarder===fwdName&&(r.origin||'').toUpperCase()===(orig||'').toUpperCase()&&(r.dest||'').toUpperCase()===(dest||'').toUpperCase());
+  return L.find(r=>(r.round||1)===round)||L.find(r=>(r.round||1)===2)||L[0]||null;
+}
+function fsFinalWinner(sc){
+  const round=R.r2.complete?2:1;const fwds=activeCarriers();
+  const rates=fwds.map(f=>({c:f,r:rateOf(round,f.id,sc.id)})).filter(x=>x.r!=null&&x.r>0).sort((a,b)=>a.r-b.r);
+  const ov=R.laneAward&&R.laneAward[sc.id];const aw=ov?fwds.find(f=>f.id===ov):null;
+  const fwd=aw||(rates[0]?rates[0].c:null);const rate=aw?rateOf(round,aw.id,sc.id):(rates[0]?rates[0].r:null);
+  return {round,fwd,rate,runner:rates.find(x=>fwd&&x.c.id!==fwd.id)||null};
+}
+function laneVolume(sc){const k=((sc.orig||'')+'|'+(sc.dest||'')).toUpperCase();const d=R.volumes&&R.volumes.data&&R.volumes.data[k];return d?Object.values(d).reduce((a,x)=>a+(num(x)||0),0):0;}
+function computeWB(){
+  ensureModel();const wk=R.courier.week||{};
+  return R.scope.filter(s=>s.orig&&s.dest).map(sc=>{
+    const w=fsFinalWinner(sc);const missing=[];
+    if(!w.fwd)missing.push('no final RFQ winner');
+    const ret=w.fwd?fsRetLine(w.fwd.name,sc.orig,sc.dest,w.round):null;
+    const base=ret?num(ret.bs):null,fsc=ret?(num(ret.fsc)||0):0,adder=ret?(num(ret.adder)||0):0,min=ret?num(ret.min):null;
+    if(w.fwd&&base==null)missing.push('winner base/kg');if(w.fwd&&min==null)missing.push('minimum charge');
+    const allin=w.rate!=null?w.rate:(base!=null?base+fsc+adder:null);
+    const minKg=(base&&min!=null)?min/base:null;
+    const oc=ctryCode(sc.orig),dc=ctryCode(sc.dest);
+    const elig=FS_ACCOUNTS.map(a=>({a,c:R.courier.accounts[a.id],s:acctStatus(a)})).filter(x=>x.a.country===oc&&x.s.ready&&courierBase(x.c.matrix,sc.dest,dc,0.5)!=null);
+    if(!oc)missing.push('origin country unknown');
+    else if(!elig.length)missing.push('no eligible '+oc+' courier account (tariff/FSC/week) covering '+sc.dest);
+    const fwdCost=x=>(base==null||min==null)?null:Math.max(min,base*x)+(fsc+adder)*x;
+    const cCost=(e,x)=>{const b=courierBase(e.c.matrix,sc.dest,dc,x);return b==null?null:{base:b,cost:b*(1+(num(e.c.fscPct)||0)/100)};};
+    let breakW=null,best=null,gap=false;const samples=[];
+    if(!missing.length){
+      for(let x=0.5;x<=1000.0001;x+=0.5){const f=fwdCost(x);let bc=null;elig.forEach(e=>{const r=cCost(e,x);if(r&&(!bc||r.cost<bc.cost))bc={e,base:r.base,cost:r.cost};});
+        if([0.5,1,2,5,10,20,45,70,100,300,500,1000].includes(x))samples.push({w:x,f,c:bc?bc.cost:null,who:bc?bc.e.a.provider+' '+bc.e.a.country:'—'});
+        if(bc==null){gap=true;break;}
+        if(bc.cost<=f){breakW=x;best=bc;}else break;}
+    }
+    let outcome,alloc,rule;
+    if(missing.length){outcome='action';alloc='Action Required';rule='Resolve: '+missing.join('; ');}
+    else if(breakW!=null&&breakW>=1000){outcome='5050';alloc='50/50 all-weight allocation';rule='Courier cheaper at every tested weight → 50% '+best.e.a.provider+' '+best.e.a.country+' / 50% '+w.fwd.name;}
+    else if(breakW!=null){outcome='split';alloc='Weight-based split';rule='≤ '+breakW+' kg → '+best.e.a.provider+' '+best.e.a.country+'; > '+breakW+' kg → '+w.fwd.name;}
+    else{outcome='forwarder';alloc='100% final RFQ forwarder';rule='Final RFQ forwarder cheaper throughout → 100% '+w.fwd.name;}
+    // audit fields: base tariff at comparison weight (break kg, else RFQ min kg)
+    const cmpW=breakW!=null?breakW:(minKg?Math.ceil(minKg*2)/2:null);
+    let audit=null;if(!missing.length){const e=best?best.e:elig[0];const r=cmpW?cCost(e,cmpW):null;audit={provider:e.a.provider,country:e.a.country,name:e.c.name||(e.a.provider+' '+e.a.country),baseAt:r?r.base:null,cmpW,fscPct:num(e.c.fscPct),fscMonday:e.c.fscMonday,week:wk.monday+' ('+wk.year+')'};}
+    const approved=R.wb.approved[sc.id]||null;
+    return {sc,w,ret,base,fsc,adder,min,allin,minKg,oc,dc,elig,breakW,best,outcome,alloc,rule,missing,samples,audit,approved,vol:laneVolume(sc),gap};
+  });
+}
+function wbAllApproved(){const rows=computeWB();return rows.length>0&&rows.every(r=>r.approved&&r.outcome!=='action');}
+window.fsApproveWB=function(sid,all){
+  const rows=computeWB();const me=fsUser().username||'approver';let n=0;
+  rows.forEach(r=>{if(all?(r.outcome!=='action'):(r.sc.id===sid)){if(r.outcome==='action'){toast('Resolve Action Required first.');return;}R.wb.approved[r.sc.id]={at:new Date().toISOString(),by:me,decision:r.alloc,rule:r.rule,breakW:r.breakW,outcome:r.outcome};n++;}});
+  persist();render();if(n)toast(n+' weight-break decision(s) approved.');
+  if(window.logAudit&&n)logAudit(R.id,'wb_approve',n+' weight-break routing decision(s) approved',{n});
+};
+window.fsUnapproveWB=function(sid){delete R.wb.approved[sid];persist();render();};
+window.viewWeightBreak=function(){
+  ensureModel();
+  if(!R.rfqClosed)return emptyCard('Confirm the final RFQ winners on Winner & Award first. The courier comparison starts from the final Round-2 forwarder winner, not preliminary Round-1 bids.');
+  if(!isAir())return `<div class="card"><div class="bd"><div class="empty">Weight-break routing applies to airfreight per-kg lanes. This is a trucking RFQ — go straight to the Final Award Workbook.</div><div style="text-align:center;margin-top:12px">${awardBtn()}</div></div></div>`;
+  const rows=computeWB();
+  const cnt=k=>rows.filter(r=>r.outcome===k).length;const apr=rows.filter(r=>r.approved).length;
+  const stats=`<div class="statgrid" style="margin-bottom:20px">
+    <div class="stat"><div class="lab">Airport lanes</div><div class="val">${rows.length}</div><div class="sub">${apr} approved</div></div>
+    <div class="stat"><div class="lab">50/50 all-weight</div><div class="val" style="color:#6d4bce">${cnt('5050')}</div><div class="sub">courier cheaper at every 0.5 kg</div></div>
+    <div class="stat"><div class="lab">Weight split</div><div class="val" style="color:var(--amber)">${cnt('split')}</div><div class="sub">courier below break, forwarder above</div></div>
+    <div class="stat"><div class="lab">100% forwarder</div><div class="val" style="color:var(--ok)">${cnt('forwarder')}</div></div>
+    <div class="stat"><div class="lab">Action Required</div><div class="val" style="color:${cnt('action')?'var(--navy)':'var(--ok)'}">${cnt('action')}</div><div class="sub">resolve before approval</div></div></div>`;
+  const formula=`<div class="card"><div class="hd"><div><h2>Courier vs. final RFQ winner — confirmed rules</h2><div class="desc">Weight scan every 0.5 kg from 0.5 kg through 1,000 kg. Eligible courier = cheapest current FedEx/DHL account (origin-country account, current tariff + matching weekly FSC) at that weight.</div></div>
+    <div class="row-actions no-print"><button class="btn ghost sm" onclick="TAB='courier';render()">← Courier accounts</button><button class="btn sm" onclick="fsApproveWB(null,true)">✓ Approve all ready rows</button></div></div>
+   <div class="bd" style="padding:0"><table><thead><tr><th>Calculation</th><th>Rule</th></tr></thead><tbody>
+   <tr><td><b>RFQ minimum weight</b></td><td>Forwarder minimum charge ÷ forwarder <b>base</b> per-kg rate (not all-in; all-in/kg stays visible for audit)</td></tr>
+   <tr><td><b>Forwarder cost at weight</b></td><td>max(minimum charge, base × weight) + (FSC + adder) × weight</td></tr>
+   <tr><td><b>Courier cost at weight</b></td><td>Account base charge + (base charge × matching weekly FSC %)</td></tr>
+   <tr><td><b>Break weight</b></td><td>Highest contiguous weight where courier ≤ final forwarder</td></tr>
+   <tr><td><b>Allocation</b></td><td>Cheaper at every weight → 50/50 · cheaper only below a break → split at the break · forwarder cheaper throughout → 100% forwarder · missing inputs → Action Required</td></tr></tbody></table></div></div>`;
+  const groups={};rows.forEach(r=>{groups[originCountry(r.sc.orig)]=groups[originCountry(r.sc.orig)]||[];groups[originCountry(r.sc.orig)].push(r);});
+  const badge=r=>r.outcome==='action'?'<span class="pill pending dot" style="background:#fdeef1;color:var(--navy)">Action Required</span>':r.outcome==='5050'?'<span class="pill" style="background:#efe9fb;color:#6d4bce">50/50</span>':r.outcome==='split'?'<span class="pill pending dot">Split</span>':'<span class="pill done dot">Forwarder</span>';
+  const table=`<div class="card"><div class="hd"><div><h2>Final airport-lane weight-break table</h2><div class="desc">Final RFQ result · courier audit fields · weight decision · final selection. Resolve every Action Required row before approving the final award.</div></div></div>
+   <div class="bd" style="padding:0;overflow:auto"><table style="font-size:12.5px"><thead><tr>
+    <th>Origin</th><th>Lane</th><th class="num">Vol (kg)</th><th>R2 winner</th><th class="num">All-in/kg</th><th class="num">Base/kg</th><th class="num">Min chg</th><th class="num">RFQ min kg</th>
+    <th>Courier account</th><th class="num">Base @cmp kg</th><th class="num">FSC %</th><th>FSC Monday</th><th>Bench. week</th>
+    <th class="num">Break kg</th><th>Courier band</th><th>Forwarder band</th><th>Status</th><th>Final selection</th><th></th></tr></thead><tbody>
+   ${Object.keys(groups).map(g=>groups[g].map((r,i)=>`<tr>
+    ${i===0?`<td rowspan="${groups[g].length}" style="vertical-align:top;border-right:3px solid var(--navy);background:var(--teal-soft)"><b>${esc(g)}</b></td>`:''}
+    <td><b>${esc(r.sc.name)}</b></td><td class="num">${r.vol?fmt0(r.vol):'—'}</td><td>${r.w.fwd?esc(r.w.fwd.name):'—'}</td>
+    <td class="num">${r.allin!=null?fmt(r.allin,3):'—'}</td><td class="num">${r.base!=null?fmt(r.base,3):'—'}</td><td class="num">${r.min!=null?fmt(r.min,0):'—'}</td><td class="num">${r.minKg!=null?fmt(r.minKg,1):'—'}</td>
+    <td>${r.audit?esc(r.audit.provider+' '+r.audit.country)+'<div class="small muted">'+esc(r.audit.name)+'</div>':'—'}</td>
+    <td class="num">${r.audit&&r.audit.baseAt!=null?fmt(r.audit.baseAt,2)+'<div class="small muted">@'+r.audit.cmpW+' kg</div>':'—'}</td>
+    <td class="num">${r.audit&&r.audit.fscPct!=null?fmt(r.audit.fscPct,1)+'%':'—'}</td><td class="small">${r.audit?esc(r.audit.fscMonday):'—'}</td><td class="small">${r.audit?esc(r.audit.week):'—'}</td>
+    <td class="num"><b>${r.breakW!=null?(r.breakW>=1000?'1000+':r.breakW):'—'}</b></td>
+    <td class="small">${r.outcome==='5050'?'all weights (50%)':r.outcome==='split'?'0.5–'+r.breakW+' kg':'—'}</td>
+    <td class="small">${r.outcome==='5050'?'all weights (50%)':r.outcome==='split'?'> '+r.breakW+' kg':r.outcome==='forwarder'?'all weights':'—'}</td>
+    <td>${badge(r)}</td>
+    <td class="small">${esc(r.alloc)}<div class="muted" style="font-size:11px">${esc(r.rule)}</div></td>
+    <td class="no-print">${r.approved?`<span class="pill done dot" title="${esc(r.approved.by)} · ${esc(new Date(r.approved.at).toLocaleString())}">Approved</span> <button class="del" onclick="fsUnapproveWB('${r.sc.id}')" title="Revoke">×</button>`:(r.outcome==='action'?'':`<button class="btn sm" onclick="fsApproveWB('${r.sc.id}')">Approve</button>`)}</td>
+   </tr>`).join('')).join('')}</tbody></table></div>
+   <div class="bd" style="padding-top:0"><div class="hint">${infoSVG()}<div><b>Approval:</b> preserve this table with the RFQ record so the weekly FSC decision remains auditable. ${wbAllApproved()?'<b style="color:var(--ok)">All rows decided — the Final Award Workbook is unlocked.</b>':'Every row must be approved (and no Action Required) before the workbook can be downloaded.'}</div></div>
+   <div style="margin-top:12px">${awardBtn()}</div></div></div>`;
+  const samples=rows.filter(r=>r.samples.length).slice(0,6).map(r=>`<div style="margin-bottom:12px"><div class="section-title">${esc(r.sc.name)} — cost at key weights (${esc(cur())})</div><div style="overflow:auto"><table style="font-size:12px"><thead><tr><th class="num">kg</th>${r.samples.map(s=>`<th class="num">${s.w}</th>`).join('')}</tr></thead><tbody>
+    <tr><td><b>${esc(r.w.fwd.name)}</b></td>${r.samples.map(s=>`<td class="num ${s.c!=null&&s.f<=s.c?'best':''}">${fmt(s.f,2)}</td>`).join('')}</tr>
+    <tr><td><b>Best courier</b></td>${r.samples.map(s=>`<td class="num ${s.c!=null&&s.c<s.f?'best':''}" title="${esc(s.who)}">${s.c!=null?fmt(s.c,2):'—'}</td>`).join('')}</tr></tbody></table></div></div>`).join('');
+  const sampleCard=samples?`<div class="card"><div class="hd"><div><h2>Audit samples</h2><div class="desc">Cheapest option highlighted. First six lanes with a full comparison.</div></div></div><div class="bd">${samples}</div></div>`:'';
+  return stats+formula+table+sampleCard;
+};
+function awardBtn(){const ok=!isAir()||wbAllApproved();return `<button class="btn ${ok?'':'ghost'}" onclick="fsDownloadFinalAward()" ${ok?'':'disabled title="Approve every weight-break row first"'}>⭳ Download Final Award Workbook (Per-kg Award + Trucking Award)</button>`;}
+
+/* ================================================================
+   §13 FINAL AWARD WORKBOOK — exactly two worksheets
+   ================================================================ */
+function truckingAwardRows(){
+  const wt=num((R.cmp||{}).wt)||100;const byLane={};
+  (R.returnsList||[]).filter(r=>r.mode==='trucking').forEach(r=>{const rd_=r.round||1;const k=(r.origin+'|'+r.dest+'|'+(r.group||'')).toUpperCase();
+    const L=byLane[k]||(byLane[k]={o:r.origin,d:r.dest,g:r.group,q:{}});
+    // prefer round-2 lines per forwarder
+    if(!L.q[r.forwarder]||rd_>=(L.q[r.forwarder].round||1))L.q[r.forwarder]=Object.assign({round:rd_},r);});
+  return Object.values(byLane).map(L=>{
+    const q=Object.values(L.q).map(r=>{const ai=cmpAllIn(r,'trucking',wt);const isLTL=r.ltlmin!=null;const eq=[['40ft',r.r40],['20ft',r.r20],['3-ton',r.r3t],['1-ton',r.r1t]].find(x=>num(x[1])!=null);
+      return {r,ai,basis:isLTL?'LTL (min + per-kg)':'FTL '+(eq?eq[0]:''),perkg:isLTL?(num(r.ltlpk)||0)*wt:null,equip:isLTL?null:(eq?num(eq[1]):null),customs:num(r.customs)||0,min:isLTL?num(r.ltlmin):null};}).filter(x=>x.ai!=null).sort((a,b)=>a.ai-b.ai);
+    const b=q[0],s=q[1];
+    return {category:L.g||truckCategory(L.o,L.d),origin:L.o,dest:L.d,basis:b?b.basis:'',wt,winner:b?b.r.forwarder:'',transit:b?b.r.tat:'',min:b?b.min:'',perkg:b?b.perkg:'',equip:b?b.equip:'',customs:b?b.customs:'',cost:b?b.ai:'',runner:s?s.r.forwarder+' ('+fmt(s.ai,2)+')':''};
+  }).sort((a,b)=>a.category.localeCompare(b.category)||a.origin.localeCompare(b.origin));
+}
+window.fsDownloadFinalAward=function(){
+  if(!window.ExcelJS){toast('ExcelJS not loaded.');return;}
+  if(isAir()&&!wbAllApproved()){toast('Approve every weight-break row first.');return;}
+  const wb=new ExcelJS.Workbook();wb.creator='Broadcom Procurement';
+  const hdr=(ws,cols,widths)=>{const t=ws.addRow([rfqCode()+' — '+R.profile.name+' · '+cur()+' · '+(R.profile.from||'')+' → '+(R.profile.to||'')+' · generated '+new Date().toLocaleString()]);t.getCell(1).style=XS.title;ws.mergeCells(1,1,1,cols.length);
+    const h=ws.addRow(cols);h.eachCell(c=>c.style=XS.header);h.height=32;ws.columns=widths.map(w=>({width:w}));ws.views=[{state:'frozen',ySplit:2}];};
+  // Sheet 1 — Per-kg Award
+  const ws1=wb.addWorksheet('Per-kg Award',{properties:{tabColor:{argb:'FFCC092F'}}});
+  const c1=['Origin country','Airport lane','Volume (kg)','Final RFQ winner','All-in/kg','Minimum charge','Minimum weight (kg)','Courier provider / account','Base charge','Weekly FSC %','Effective week','Break-even kg','Final award','Routing rule','Decision'];
+  hdr(ws1,c1,[14,12,11,18,10,12,12,26,11,10,18,11,26,44,30]);
+  const rows=isAir()?computeWB():[];
+  rows.forEach((r,i)=>{const ap=r.approved||{};const row=ws1.addRow([originCountry(r.sc.orig),r.sc.orig+'-'+r.sc.dest,r.vol||'',r.w.fwd?r.w.fwd.name:'',r.allin,r.min,r.minKg!=null?+r.minKg.toFixed(2):'',r.audit?r.audit.provider+' '+r.audit.country+' · '+r.audit.name:'',r.audit?r.audit.baseAt:'',r.audit?r.audit.fscPct:'',r.audit?r.audit.week:'',r.breakW!=null?(r.breakW>=1000?'1000+':r.breakW):'',r.alloc,r.rule,ap.at?'Approved by '+ap.by+' '+new Date(ap.at).toLocaleString():'']);
+    row.eachCell(c=>c.style=i%2?XS.cellAlt:XS.cell);[5,9].forEach(ci=>row.getCell(ci).numFmt='0.000');[6,10].forEach(ci=>row.getCell(ci).numFmt='0.00');row.getCell(3).numFmt='#,##0';});
+  // Sheet 2 — Trucking Award
+  const ws2=wb.addWorksheet('Trucking Award',{properties:{tabColor:{argb:'FF1B3A5C'}}});
+  const c2=['Category','Origin','Destination','Rate basis','Evaluation weight (kg)','Winner','Transit','Minimum','Per-kg cost','Equipment cost','Customs cost','Evaluated cost','Runner-up'];
+  hdr(ws2,c2,[34,10,12,18,12,18,8,10,11,13,11,13,24]);
+  truckingAwardRows().forEach((t,i)=>{const row=ws2.addRow([t.category,t.origin,t.dest,t.basis,t.wt,t.winner,t.transit??'',t.min??'',t.perkg??'',t.equip??'',t.customs??'',t.cost??'',t.runner]);row.eachCell(c=>c.style=i%2?XS.cellAlt:XS.cell);[8,9,10,11,12].forEach(ci=>row.getCell(ci).numFmt='#,##0.00');});
+  if(ws2.rowCount<3)ws2.addRow(['No trucking lines in this RFQ (import trucking returns or sync portal bids to populate).']).getCell(1).style=XS.cell;
+  R.wb.exportedAt=new Date().toISOString();R.wb.exportedBy=fsUser().username||'';persist();
+  xlSaveAs(wb,rfqCode()+'_Final_Award_Workbook.xlsx');
+  toast('Final Award Workbook downloaded — Per-kg Award + Trucking Award.');
+  if(window.logAudit)logAudit(R.id,'award_export','Final Award Workbook downloaded',{perkg:rows.length});
+  if(TAB==='wb'||TAB==='summary')render();
+};
+
+/* ================================================================
+   §14 ARCHIVE + FIVE-YEAR REPORT
+   ================================================================ */
+function loadArchive(){try{return JSON.parse(localStorage.getItem(ARCHIVE_KEY)||'[]');}catch(e){return [];}}
+function saveArchive(a){try{localStorage.setItem(ARCHIVE_KEY,JSON.stringify(a));}catch(e){toast('Archive storage full — export the RFQ JSON as backup.');}}
+window.fsArchiveRFQ=async function(){
+  if(!confirm('Archive '+rfqCode()+' as the final snapshot for historical reporting?\n\nThe RFQ stays available read-only; the snapshot feeds the rolling five-year report.'))return;
+  R.archived={at:new Date().toISOString(),by:fsUser().username||'admin'};persist();
+  const arc=loadArchive().filter(x=>x.id!==R.id);arc.push({id:R.id,code:rfqCode(),year:R.profile.year,archivedAt:R.archived.at,data:JSON.parse(JSON.stringify(R))});saveArchive(arc);
+  if(window.logAudit)logAudit(R.id,'archive','RFQ archived for five-year reporting',{});
+  if(typeof cloudSyncUp==='function'&&window.supabase)await cloudSyncUp();
+  toast('Archived '+rfqCode()+'. Snapshot preserved.');render();
+};
+window.fsSyncCloudHistory=async function(){
+  const s=sb();if(!s){toast('Supabase not loaded.');return;}
+  try{const {data,error}=await s.from('rfq_projects').select('id,code,year,updated_at,data');if(error)throw error;window.FS_CLOUD_HISTORY=data||[];R.fiveYr=R.fiveYr||{};R.fiveYr.cloudAt=new Date().toISOString();R.fiveYr.cloudN=(data||[]).length;persist();render();toast('Cloud history: '+(data||[]).length+' RFQ record(s).');}
+  catch(e){toast('Cloud history failed: '+e.message);}
+};
+function rfqCodeOf(d){const p=d.profile||{};const n=parseInt(String(p.seq||'001').replace(/\D/g,''),10);return 'BRCM-RFQ-'+(p.mode==='air'?'AIR':'TRK')+'-'+String(isFinite(n)?n:1).padStart(3,'0');}
+function recordsFrom(d,source){
+  if(!d||!d.profile)return [];const out=[];const code=rfqCodeOf(d);const year=+d.profile.year||null;const curr=d.profile.currency||'USD';const half=d.profile.half||'';
+  const round=d.r2&&d.r2.complete?2:1;const rd_=(round===2?d.r2:d.r1)||{rates:{}};const cars=(d.carriers||[]).filter(c=>c.name&&c.name.trim());
+  (d.scope||[]).forEach(sc=>{const lane=sc.orig&&sc.dest?sc.orig+'-'+sc.dest:sc.name;const vol=(()=>{const k=((sc.orig||'')+'|'+(sc.dest||'')).toUpperCase();const v=d.volumes&&d.volumes.data&&d.volumes.data[k];return v?Object.values(v).reduce((a,x)=>a+(num(x)||0),0):0;})();
+    const rates=cars.map(c=>({c,r:(rd_.rates&&rd_.rates[c.id]&&num(rd_.rates[c.id][sc.id]))||null})).filter(x=>x.r!=null&&x.r>0).sort((a,b)=>a.r-b.r);
+    const ov=d.laneAward&&d.laneAward[sc.id];const winId=ov||(rates[0]?rates[0].c.id:null);
+    rates.forEach(x=>out.push({source,rfq:d.id,code,year,half,mode:d.profile.mode==='air'?'AIR':'TRUCKING',lane,basis:d.profile.mode==='air'?'per-kg all-in':'evaluated cost',forwarder:x.c.name,rate:x.r,currency:curr,winner:x.c.id===winId,round,volume:vol,archived:!!d.archived}));});
+  // trucking lines from returns (when RFQ is air but trucking returns exist)
+  const byLane={};(d.returnsList||[]).filter(r=>r.mode==='trucking').forEach(r=>{const k=(r.origin+'|'+r.dest).toUpperCase();const ai=cmpAllIn(r,'trucking',100);if(ai==null)return;(byLane[k]=byLane[k]||[]).push({r,ai});});
+  Object.keys(byLane).forEach(k=>{const L=byLane[k].sort((a,b)=>a.ai-b.ai);L.forEach((x,i)=>out.push({source,rfq:d.id,code,year,half,mode:'TRUCKING',lane:x.r.origin+'-'+x.r.dest,basis:x.r.ltlmin!=null?'LTL @100kg':'FTL',forwarder:x.r.forwarder,rate:x.ai,currency:curr,winner:i===0,round,volume:0,archived:!!d.archived}));});
+  return out;
+}
+function allHistoryRecords(){
+  const seen=new Set();let out=[];const add=(d,src)=>{if(!d||!d.id||seen.has(d.id))return;seen.add(d.id);out=out.concat(recordsFrom(d,src));};
+  loadArchive().forEach(a=>add(a.data,'archive'));
+  add(R,'current');
+  loadReg().forEach(m=>{if(m.id!==R.id)add(loadRFQ(m.id),'saved');});
+  (window.FS_CLOUD_HISTORY||[]).forEach(c=>add(c.data,'cloud'));
+  return out.filter(r=>r.year);
+}
+window.fsSetFY=function(k,v){R.fiveYr=R.fiveYr||{};R.fiveYr[k]=v;persist();render();};
+window.viewFiveYear=function(){
+  ensureModel();const F=R.fiveYr=R.fiveYr||{};
+  const all=allHistoryRecords();
+  const years=[...new Set(all.map(r=>r.year))].sort();
+  const maxY=years.length?years[years.length-1]:new Date().getFullYear();
+  const to=+F.to||maxY,from=+F.from||(to-4);
+  const opt=(list,sel,label)=>`<option value="">${label}</option>`+list.map(x=>`<option ${String(x)===String(sel)?'selected':''}>${esc(x)}</option>`).join('');
+  const rows=all.filter(r=>r.year>=from&&r.year<=to&&(!F.mode||r.mode===F.mode)&&(!F.lane||r.lane===F.lane)&&(!F.basis||r.basis===F.basis)&&(!F.fwd||r.forwarder===F.fwd)&&(!F.curr||r.currency===F.curr));
+  const yrs=[...new Set(rows.map(r=>r.year))].sort();const usable=yrs.length;
+  const lanes=[...new Set(all.map(r=>r.lane))].sort(),fwds=[...new Set(all.map(r=>r.forwarder))].sort(),bases=[...new Set(all.map(r=>r.basis))],currs=[...new Set(all.map(r=>r.currency))];
+  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+  const stats=`<div class="statgrid" style="margin-bottom:20px">
+    <div class="stat"><div class="lab">Coverage</div><div class="val" style="color:${usable>=5?'var(--ok)':'var(--amber)'}">${usable} of 5</div><div class="sub">usable years ${from}–${to}${usable<5?' · fewer than five years on record':''}</div></div>
+    <div class="stat"><div class="lab">RFQ cycles</div><div class="val">${[...new Set(rows.map(r=>r.rfq))].length}</div><div class="sub">${[...new Set(rows.filter(r=>r.archived).map(r=>r.rfq))].length} archived</div></div>
+    <div class="stat"><div class="lab">Rate records</div><div class="val">${rows.length}</div><div class="sub">real submitted rates only — no sample data</div></div>
+    <div class="stat"><div class="lab">Cloud history</div><div class="val" style="font-size:15px">${F.cloudAt?esc(new Date(F.cloudAt).toLocaleDateString())+' · '+F.cloudN+' RFQ':'not synced'}</div><div class="sub"><a href="#" onclick="fsSyncCloudHistory();return false">↻ synchronize</a></div></div></div>`;
+  const filters=`<div class="card"><div class="hd"><div><h2>Five-Year RFQ Analytics</h2><div class="desc">Rolling lane- and trucking-basis history across all valid saved, archived or authorized cloud RFQ records. For like-for-like trends compare the same lane, basis and currency.</div></div>
+    <div class="row-actions no-print"><button class="btn ghost sm" onclick="fsArchiveRFQ()">🗄 Archive current RFQ</button><button class="btn teal sm" onclick="fsDownloadFiveYear()">⭳ Report workbook</button></div></div>
+   <div class="bd"><div class="grid g4" style="align-items:end">
+    <div><label class="fld">From year</label><input class="yellow" type="number" value="${from}" onchange="fsSetFY('from',this.value)"></div>
+    <div><label class="fld">To year</label><input class="yellow" type="number" value="${to}" onchange="fsSetFY('to',this.value)"></div>
+    <div><label class="fld">Mode</label><select class="yellow" onchange="fsSetFY('mode',this.value)">${opt(['AIR','TRUCKING'],F.mode,'All modes')}</select></div>
+    <div><label class="fld">Lane / corridor</label><select class="yellow" onchange="fsSetFY('lane',this.value)">${opt(lanes,F.lane,'All lanes')}</select></div>
+    <div><label class="fld">Rate basis</label><select class="yellow" onchange="fsSetFY('basis',this.value)">${opt(bases,F.basis,'All bases')}</select></div>
+    <div><label class="fld">Forwarder</label><select class="yellow" onchange="fsSetFY('fwd',this.value)">${opt(fwds,F.fwd,'All forwarders')}</select></div>
+    <div><label class="fld">Currency</label><select class="yellow" onchange="fsSetFY('curr',this.value)">${opt(currs,F.curr,'All')}</select></div>
+    <div><button class="btn ghost" onclick="R.fiveYr={cloudAt:R.fiveYr.cloudAt,cloudN:R.fiveYr.cloudN};persist();render()">Reset filters</button></div></div></div></div>`;
+  if(!rows.length)return stats+filters+`<div class="card"><div class="bd"><div class="empty">No RFQ history in this range. Archive completed RFQs or synchronize authorized cloud records — the report never generates sample data.</div></div></div>`;
+  // rate trend: lane × year (avg submitted)
+  const laneKeys=[...new Set(rows.map(r=>r.lane))].sort();
+  const trend=`<div class="card"><div class="hd"><div><h2>Submitted RFQ rate trend</h2><div class="desc">Average submitted rate per lane by year (all bidders) · winning rate in bold.</div></div></div>
+   <div class="bd" style="padding:0;overflow:auto"><table><thead><tr><th>Lane</th><th>Basis</th>${yrs.map(y=>`<th class="num">${y}</th>`).join('')}<th class="num">Δ first→last</th></tr></thead><tbody>
+   ${laneKeys.map(l=>{const rr=rows.filter(r=>r.lane===l);const basis=[...new Set(rr.map(r=>r.basis))].join(', ');const vals=yrs.map(y=>{const a=rr.filter(r=>r.year===y);const w=a.find(r=>r.winner);return {avg:avg(a.map(r=>r.rate)),win:w?w.rate:null};});
+     const first=vals.find(v=>v.win!=null||v.avg!=null),last=[...vals].reverse().find(v=>v.win!=null||v.avg!=null);const f=first?(first.win??first.avg):null,la=last?(last.win??last.avg):null;const d=(f&&la&&f!==la)?(la-f)/f*100:null;
+     return `<tr><td><b>${esc(l)}</b></td><td class="small muted">${esc(basis)}</td>${vals.map(v=>`<td class="num">${v.avg!=null?fmt(v.avg,3):'—'}${v.win!=null?'<div><b>'+fmt(v.win,3)+'</b></div>':''}</td>`).join('')}<td class="num" style="color:${d==null?'inherit':d<0?'var(--ok)':'var(--navy)'}">${d!=null?(d>0?'+':'')+fmt(d,1)+'%':'—'}</td></tr>`;}).join('')}</tbody></table></div></div>`;
+  const winY=yrs.map(y=>{const w=rows.filter(r=>r.year===y&&r.winner);return {y,n:w.length,avg:avg(w.map(r=>r.rate)),cycles:[...new Set(w.map(r=>r.code))].join(', ')};});
+  const share=fwds.map(f=>{const w=rows.filter(r=>r.forwarder===f&&r.winner);const q=rows.filter(r=>r.forwarder===f);return {f,won:w.length,quoted:q.length,vol:w.reduce((a,r)=>a+(r.volume||0),0)};}).filter(x=>x.quoted).sort((a,b)=>b.won-a.won);
+  const totWon=share.reduce((a,x)=>a+x.won,0)||1;
+  const overview=`<div class="grid g2"><div class="card"><div class="hd"><div><h2>Average winning rate by year</h2></div></div><div class="bd" style="padding:0"><table><thead><tr><th>Year</th><th class="num">Lanes awarded</th><th class="num">Avg winning rate</th><th>Cycles</th></tr></thead><tbody>${winY.map(w=>`<tr><td><b>${w.y}</b></td><td class="num">${w.n}</td><td class="num"><b>${w.avg!=null?fmt(w.avg,3):'—'}</b></td><td class="small muted">${esc(w.cycles)}</td></tr>`).join('')}</tbody></table></div></div>
+   <div class="card"><div class="hd"><div><h2>Forwarder award share</h2></div></div><div class="bd" style="padding:0"><table><thead><tr><th>Forwarder</th><th class="num">Won</th><th class="num">Quoted</th><th>Share</th></tr></thead><tbody>${share.map(s=>`<tr><td><b>${esc(s.f)}</b></td><td class="num">${s.won}</td><td class="num">${s.quoted}</td><td><div class="flex"><div class="bar" style="width:120px"><i style="width:${s.won/totWon*100}%"></i></div><span class="small">${fmt(s.won/totWon*100,0)}%</span></div></td></tr>`).join('')}</tbody></table></div></div></div>`;
+  const audit=`<div class="card"><div class="hd"><div><h2>Detailed audit table</h2><div class="desc">${rows.length} records · source: archive / current / saved / cloud.</div></div></div><div class="bd" style="padding:0;overflow:auto;max-height:420px"><table style="font-size:12px"><thead><tr><th>Year</th><th>RFQ</th><th>Mode</th><th>Lane</th><th>Basis</th><th>Forwarder</th><th class="num">Rate</th><th>Curr</th><th>Round</th><th>Winner</th><th>Source</th></tr></thead><tbody>
+   ${rows.slice().sort((a,b)=>b.year-a.year||a.lane.localeCompare(b.lane)||a.rate-b.rate).map(r=>`<tr><td>${r.year}</td><td class="small">${esc(r.code)}</td><td>${r.mode}</td><td><b>${esc(r.lane)}</b></td><td class="small">${esc(r.basis)}</td><td>${esc(r.forwarder)}</td><td class="num">${fmt(r.rate,3)}</td><td>${esc(r.currency)}</td><td>R${r.round}</td><td>${r.winner?'<span class="pill done dot">won</span>':''}</td><td class="small muted">${r.source}${r.archived?' · archived':''}</td></tr>`).join('')}</tbody></table></div></div>`;
+  return stats+filters+trend+overview+audit;
+};
+window.fsDownloadFiveYear=function(){
+  if(!window.ExcelJS){toast('ExcelJS not loaded.');return;}
+  const F=R.fiveYr||{};const all=allHistoryRecords();const years=[...new Set(all.map(r=>r.year))].sort();const maxY=years.length?years[years.length-1]:new Date().getFullYear();const to=+F.to||maxY,from=+F.from||(to-4);
+  const rows=all.filter(r=>r.year>=from&&r.year<=to&&(!F.mode||r.mode===F.mode)&&(!F.lane||r.lane===F.lane)&&(!F.basis||r.basis===F.basis)&&(!F.fwd||r.forwarder===F.fwd)&&(!F.curr||r.currency===F.curr));
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet('Rate History');ws.columns=[8,18,10,12,16,18,10,8,7,8,10].map(w=>({width:w}));
+  const t=ws.addRow(['Five-Year RFQ Rate History · '+from+'–'+to+' · '+rows.length+' records · real RFQ data only']);t.getCell(1).style=XS.title;ws.mergeCells(1,1,1,11);
+  ws.addRow(['Year','RFQ','Mode','Lane','Basis','Forwarder','Rate','Currency','Round','Winner','Source']).eachCell(c=>c.style=XS.header);
+  rows.forEach((r,i)=>ws.addRow([r.year,r.code,r.mode,r.lane,r.basis,r.forwarder,r.rate,r.currency,r.round,r.winner?'Y':'',r.source]).eachCell(c=>c.style=i%2?XS.cellAlt:XS.cell));
+  const w2=wb.addWorksheet('Winner Summary');w2.columns=[8,18,10,12,18,10,10,12].map(w=>({width:w}));
+  const t2=w2.addRow(['Winner Summary · average winning rate by lane and year']);t2.getCell(1).style=XS.title;w2.mergeCells(1,1,1,8);
+  w2.addRow(['Year','RFQ','Mode','Lane','Winning forwarder','Rate','Currency','Volume (kg)']).eachCell(c=>c.style=XS.header);
+  rows.filter(r=>r.winner).sort((a,b)=>a.year-b.year||a.lane.localeCompare(b.lane)).forEach((r,i)=>w2.addRow([r.year,r.code,r.mode,r.lane,r.forwarder,r.rate,r.currency,r.volume||'']).eachCell(c=>c.style=i%2?XS.cellAlt:XS.cell));
+  xlSaveAs(wb,'FreightSphere_FiveYear_Report_'+from+'-'+to+'.xlsx');toast('Five-year report workbook downloaded.');
+};
+
+/* ================================================================
+   SUMMARY wrapper — archive + controls  ·  TOOLS wrapper — security & troubleshooting
+   ================================================================ */
+function controlsRows(){
+  const air=isAir();const parts=activeCarriers();const subs=R.submissions||{};
+  const codeOK=!air||R.scope.every(s=>/^[A-Z]{3}$/.test(s.orig||'')&&/^[A-Z]{3}$/.test(s.dest||''));
+  const volOK=R.scope.length>0&&R.scope.every(s=>!s.orig||laneVolume(s)>0);
+  const r1=(R.roundsCache||[]).find(r=>r.round_number===1);
+  const acc=allAccountsReady();const needed=neededCountries();const accNeeded=FS_ACCOUNTS.filter(a=>needed.includes(a.country));const accOK=accNeeded.length>0&&accNeeded.every(a=>acctStatus(a).ready);
+  return [
+    ['Scope and lane codes','Administrator','All lanes use consistent origin/destination codes',codeOK],
+    ['Volumes','Administrator','Every evaluated lane has an approved annual volume',volOK],
+    ['Round 1 deadline','Administrator','Displayed correctly in the forwarder portal',!!r1],
+    ['Round 1 completeness','Administrator','Every invited forwarder is submitted or formally declined',parts.length>0&&(parts.every(c=>subs[c.id])||!!R.r1.locked)],
+    ['Top '+(R.profile.shortlistN||3)+' access','Administrator','Only shortlisted accounts can enter Round 2',!!R.r1.statusPushedAt],
+    ['Round 2 targets','Administrator','Published for all shortlisted lanes; competitors hidden',!!R.r2targetsPublished],
+    ['Evaluation','Evaluators','Three independent submissions completed',R.r2.complete&&R.ev.judges.every(j=>judgeProgress(j.id).complete)],
+    ['Weighting','Approver','Approved cost/service ratio documented ('+R.ev.weights.cost+'/'+R.ev.weights.service+')',!!R.rfqClosed],
+    ['Courier inputs','Administrator','Account base tariffs and matching weekly FSC year/week validated',air?accOK:true],
+    ['Weight-break decision','Approver','Every airport lane has an auditable final allocation',air?wbAllApproved():true],
+    ['Final export','Approver','Per-kg Award and Trucking Award reviewed',!!(R.wb&&R.wb.exportedAt)],
+    ['Historical archive','Administrator','Final RFQ snapshot archived for future reporting',!!R.archived]];
+}
+function controlsCard(){
+  const rows=controlsRows();const pass=rows.filter(r=>r[3]).length;
+  return `<div class="card"><div class="hd"><div><h2>Submission and award controls</h2><div class="desc">Checklist before progressing to the next stage — <b>${pass}/${rows.length}</b> passed.</div></div>
+    <div class="row-actions no-print">${R.archived?'<span class="pill done dot">Archived '+esc(new Date(R.archived.at).toLocaleDateString())+'</span>':'<button class="btn" onclick="fsArchiveRFQ()">🗄 Archive current RFQ</button>'}</div></div>
+   <div class="bd" style="padding:0"><table><thead><tr><th>Control point</th><th>Owner</th><th>Pass condition</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r[0])}</b></td><td class="small">${esc(r[1])}</td><td class="small">${esc(r[2])}</td><td>${r[3]?'<span class="pill done dot">Pass</span>':'<span class="pill pending dot">Open</span>'}</td></tr>`).join('')}</tbody></table></div>
+   <div class="bd" style="padding-top:0"><div class="small muted"><b>Final operator sign-off:</b> Setup approved; volume and baseline coverage complete; both rounds closed; Top-N access verified; three evaluators submitted; cost/service weighting approved; final forwarder winners confirmed; courier base/FSC week current; every weight-break row decided; two-sheet workbook reviewed; RFQ archived.</div></div></div>`;
+}
+const viewSummary_base=window.viewSummary;
+window.viewSummary=function(){ensureModel();return controlsCard()+viewSummary_base();};
+
+const viewTools_base=window.viewTools;
+window.viewTools=function(){
+  ensureModel();
+  const sec=`<div class="card"><div class="hd"><div><h2>Security, deployment and data ownership</h2><div class="desc">Production requirements. Deployment gate: complete role-based access testing before loading confidential vendor rates or issuing live credentials.</div></div></div>
+   <div class="bd" style="padding:0"><table><thead><tr><th>Control</th><th>Required production implementation</th><th>Current build</th></tr></thead><tbody>
+   <tr><td><b>Authentication</b></td><td>Supabase Auth or approved identity provider; no plain-text custom passwords</td><td class="small" style="color:var(--amber)">forwarder_users table lookup — migrate to Supabase Auth</td></tr>
+   <tr><td><b>Authorization</b></td><td>Administrator, evaluator, viewer, forwarder permissions enforced in database policies</td><td class="small" style="color:var(--amber)">UI role gating + 30-min inactivity timeout — add RLS</td></tr>
+   <tr><td><b>Forwarder isolation</b></td><td>Only assigned Air/Trucking RFQs and own submissions</td><td class="small">portal filters by Setup eligibility; RLS must enforce</td></tr>
+   <tr><td><b>Round 2 access</b></td><td>Database policy verifies shortlist status</td><td class="small">forwarder_round_status checked in portal; RLS must enforce</td></tr>
+   <tr><td><b>Bid confidentiality</b></td><td>Never expose another forwarder's rates, ranking or history</td><td class="small" style="color:var(--ok)">portal shows own bid + target signal only</td></tr>
+   <tr><td><b>Audit and retention</b></td><td>Immutable submissions, evaluator records, overrides, courier week inputs, exports</td><td class="small">audit log + archive snapshot</td></tr>
+   <tr><td><b>Row-level security</b></td><td>Strict RLS on RFQ, user, rate, status, courier and history tables</td><td class="small" style="color:var(--amber)">enable and test in Supabase</td></tr></tbody></table></div>
+   <div class="bd" style="padding-top:0"><details><summary class="small" style="cursor:pointer;font-weight:700">Supabase objects used by this build (SQL reference)</summary><pre class="small" style="background:var(--bg);padding:12px;border-radius:8px;overflow:auto;white-space:pre-wrap">create table if not exists forwarder_rates (
+  id bigint generated by default as identity primary key,
+  rfq_id text not null, forwarder_username text not null, forwarder_company text,
+  round_number int not null default 1, status text not null default 'draft', -- draft | submitted
+  rates jsonb not null default '{}'::jsonb,
+  updated_at timestamptz default now(), submitted_at timestamptz,
+  unique (rfq_id, forwarder_username, round_number)
+);
+-- existing: rfq_projects(id, code, name, year, data jsonb) · rfq_rounds(rfq_id, round_number, open_at, close_at, notes)
+-- existing: forwarder_round_status(rfq_id, round_number, forwarder_username, forwarder_company, status) · forwarder_users(username, password, company_name, role, user_type, active)</pre></details></div></div>`;
+  const tips=[['Countdown not visible','Confirm an RFQ is selected and the administrator saved that round\'s closing date/time. Refresh the portal.'],['Submit button unavailable','The round may be closed, the account may not be shortlisted, or required data may be incomplete.'],['Current rates do not match','Standardize airport codes and use Origin + Destination or Lane. Prefer a current all-in rate column.'],['Savings show blank','Check volume coverage, current baseline coverage and new-rate imports for the same lane keys.'],['Round 2 does not open','Confirm Round 1 is locked and the account status is passed/shortlisted (push shortlist status from the Round 1 tab).'],['RFQ not visible to forwarder','In Setup, confirm that company is enabled for Air, Trucking, or both — and that the carrier name matches the portal company name exactly.'],['Courier result missing','Confirm winner base/kg, FSC, adder, minimum charge, account base matrix, weekly FSC, effective Monday and year are loaded.'],['50/50 result not shown','Confirm courier is cheaper at every 0.5 kg test point through 1,000 kg and an eligible account exists.'],['Five-year report is empty','Archive completed RFQs or synchronize authorized cloud records; no sample records are created.'],['Excel does not download','Use an approved browser, allow downloads and confirm spreadsheet libraries are available on the company network.']];
+  const trouble=`<div class="card"><div class="hd"><div><h2>Troubleshooting and operator checklist</h2><div class="desc">Use these checks before escalating. Escalation evidence: RFQ code, username, round, timestamp, screenshot and exact error message — never passwords or competitors' rates by email.</div></div></div>
+   <div class="bd" style="padding:0"><table><thead><tr><th>Issue</th><th>Check and action</th></tr></thead><tbody>${tips.map(t=>`<tr><td><b>${esc(t[0])}</b></td><td class="small">${esc(t[1])}</td></tr>`).join('')}</tbody></table></div></div>`;
+  return controlsCard()+viewTools_base()+sec+trouble;
+};
+
+/* ================================================================
+   SETUP wrapper — guide map + round controls
+   ================================================================ */
+const viewSetup_base=window.viewSetup;
+window.viewSetup=function(){ensureModel();const h=viewSetup_base();const i=h.indexOf('<div class="card"><div class="hd"><div><h2>Invite carriers');return guideMapCard()+(i>0?h.slice(0,i)+shortlistCard()+h.slice(i):h+shortlistCard());};
+
+/* ================================================================
+   TABS · RENDER · ROLE READ-ONLY
+   ================================================================ */
+TABS.length=0;
+[
+  {id:'setup',n:1,label:'Setup'},
+  {id:'vol',n:2,label:'Volumes'},
+  {id:'r1',n:3,label:'Round 1',badge:()=>{const s=R.submissions||{};const p=activeCarriers();return p.filter(c=>s[c.id]).length+'/'+p.length;}},
+  {id:'r2',n:4,label:'Round 2',lock:()=>!R.r1.locked,badge:()=>R.r1.locked?participants(2).length+' shortlisted':'🔒'},
+  {id:'eval',n:5,label:'Evaluation',lock:()=>!R.r2.complete,badge:()=>{const c=R.ev.judges.filter(j=>judgeProgress(j.id).complete).length;return R.r2.complete?c+'/'+R.ev.judges.length:'🔒';}},
+  {id:'winner',n:6,label:'Winner & Award'},
+  {id:'courier',n:7,label:'Courier Accounts',lock:()=>!R.rfqClosed,badge:()=>R.rfqClosed?(allAccountsReady().list.filter(x=>x.s.ready).length+'/5'):'🔒'},
+  {id:'wb',n:8,label:'Weight-Break & Award',lock:()=>!R.rfqClosed},
+  {id:'summary',n:9,label:'Summary'},
+  {id:'yoy',n:10,label:'YoY'},
+  {id:'fiveyr',n:11,label:'5-Year Report'},
+  {id:'tools',n:12,label:'Tools'},
+].forEach(t=>TABS.push(t));
+
+const VIEWS={setup:()=>viewSetup(),vol:()=>viewVolumes(),r1:()=>viewRound(1),r2:()=>viewRound(2),eval:()=>viewEval(),winner:()=>viewWinner(),courier:()=>viewCourierAccounts(),wb:()=>viewWeightBreak(),summary:()=>viewSummary(),yoy:()=>viewYoY(),fiveyr:()=>viewFiveYear(),tools:()=>viewTools()};
+window.render=function(){
+  ensureModel();
+  if(!VIEWS[TAB])TAB='setup';
+  persist();setHeader();renderTabs();renderPicker();renderBrand();
+  const v=document.getElementById('view');
+  try{v.innerHTML=VIEWS[TAB]();}catch(e){console.error(e);v.innerHTML='<div class="card"><div class="bd"><div class="empty">This screen could not render: '+esc(e.message)+'</div></div></div>';}
+  wire();applyReadOnly();
+};
+function applyReadOnly(){
+  const role=document.body.getAttribute('data-user-role')||'';
+  const ro=role==='viewer'||(role==='evaluator'&&TAB!=='eval');
+  document.querySelectorAll('#view input, #view select, #view textarea, #view button, header.top .topbtns button').forEach(el=>{
+    const oc=el.getAttribute('onclick')||'';
+    if(el.id==='logoutFab'||el.closest('nav.tabs')||/doLogout|render\(\)|TAB=/.test(oc)&&!/fs[A-Z]|lockR1|completeR2|closeRFQ|download|export/i.test(oc))return;
+    if(ro){el.disabled=true;el.style.opacity='.6';el.style.cursor='not-allowed';}});
+  const ro2=document.getElementById('fsRoBanner');
+  if(ro){if(!ro2){const b=document.createElement('div');b.id='fsRoBanner';b.className='no-print';b.style.cssText='background:#fff7d6;border-bottom:1px solid #ebd9a0;color:#7a5a00;font-size:12.5px;font-weight:600;padding:8px 16px;text-align:center';b.textContent=role==='viewer'?'Viewer access — dashboards, comparisons and approved results are read-only.':'Evaluator access — scoring is enabled on the Evaluation tab; other screens are read-only.';document.querySelector('main').prepend(b);}}
+  else if(ro2)ro2.remove();
+}
+// evaluators land on the scoring screen
+document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{if(fsRole()==='evaluator'&&R.r2.complete){TAB='eval';render();}},900);});
+// first paint with new tabs + rounds cache
+setTimeout(()=>{try{ensureModel();render();fsLoadRounds(true);}catch(e){console.warn(e);}},350);
+})();
+
+</script>
 </body></html>
