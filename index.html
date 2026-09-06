@@ -6214,20 +6214,42 @@ window.fsSyncPortalBids=async function(round){
   }catch(e){toast('Portal sync failed: '+e.message+(/relation|does not exist/i.test(e.message)?' — create the forwarder_rates table (see Tools → Security & deployment).':''));}
 };
 
-/* --- §6 lockR1 replacement: Top-N by comparable landed cost + push status to portal --- */
+/* --- §6 lockR1 replacement: Top-N by VOLUME-WEIGHTED landed cost + push status to portal ---
+   A simple average rate across lanes lets a forwarder who is cheap on one small lane and
+   expensive on your biggest lane out-rank someone who is actually cheaper overall. Weighting
+   each quoted lane by its own annual volume (rate × volume ÷ total volume) ranks forwarders on
+   the landed cost that would actually be paid — consistent with how estimated annual savings
+   are already calculated elsewhere in this app. Falls back to the simple average only when no
+   lane-volume data exists for a forwarder's quoted lanes (e.g. Volumes tab not yet uploaded, or
+   a trucking RFQ where scope buckets aren't lane-keyed). */
+function volumeWeightedTotal(round,cid){
+  let num=0,den=0;
+  R.scope.forEach(sc=>{
+    const r=rateOf(round,cid,sc.id); if(r==null||r<=0)return;
+    const vol=laneVolume(sc); if(!vol||vol<=0)return;
+    num+=r*vol; den+=vol;
+  });
+  return den>0 ? num/den : null;
+}
 window.lockR1=function(){
   R.submissions=R.submissions||{};const N=R.profile.shortlistN||3;
-  const ranked=activeCarriers().filter(c=>R.submissions[c.id]).map(c=>({id:c.id,t:R.submissions[c.id].avgRate||carrierTotal(1,c.id)})).filter(x=>x.t!=null).sort((a,b)=>a.t-b.t);
+  const ranked=activeCarriers().filter(c=>R.submissions[c.id]).map(c=>{
+    const vw=volumeWeightedTotal(1,c.id);
+    const t=vw!=null?vw:(R.submissions[c.id].avgRate||carrierTotal(1,c.id));
+    return {id:c.id,t,vw:vw!=null};
+  }).filter(x=>x.t!=null).sort((a,b)=>a.t-b.t);
   if(ranked.length<2){toast('Need at least 2 submitted forwarders.');return;}
   const missing=activeCarriers().filter(c=>!R.submissions[c.id]);
   if(missing.length&&!confirm(missing.length+' forwarder(s) have not submitted: '+missing.map(c=>c.name).join(', ')+'.\nTreat them as formally excluded and lock Round 1?'))return;
   R.r1.shortlist=ranked.slice(0,N).map(x=>x.id);R.r1.locked=true;R.r1.lockedAt=new Date().toISOString();R.round=2;
+  R.r1.rankBasis=ranked.every(x=>x.vw)?'volume-weighted':(ranked.some(x=>x.vw)?'mixed':'simple-average');
   // default Round-2 targets = best comparable Round-1 all-in per lane
   R.r2targets=R.r2targets||{};
   R.scope.forEach(sc=>{const best=Math.min(...activeCarriers().map(c=>rateOf(1,c.id,sc.id)).filter(x=>x!=null&&x>0));if(isFinite(best)&&R.r2targets[sc.id]==null)R.r2targets[sc.id]=+best.toFixed(3);});
   persist();
-  toast('Top '+N+' shortlisted: '+R.r1.shortlist.map(id=>(carrier(id)||{}).name).join(', '));
-  if(window.logAudit)logAudit(R.id,'round_lock','Round 1 locked — Top '+N+': '+R.r1.shortlist.map(id=>(carrier(id)||{}).name).join(', '),{shortlist:R.r1.shortlist.length});
+  const basisLabel=R.r1.rankBasis==='volume-weighted'?'volume-weighted landed cost':(R.r1.rankBasis==='mixed'?'volume-weighted where lane volumes exist, simple average elsewhere':'simple average rate — no lane volumes loaded');
+  toast('Top '+N+' shortlisted ('+basisLabel+'): '+R.r1.shortlist.map(id=>(carrier(id)||{}).name).join(', '));
+  if(window.logAudit)logAudit(R.id,'round_lock','Round 1 locked — Top '+N+' by '+basisLabel+': '+R.r1.shortlist.map(id=>(carrier(id)||{}).name).join(', '),{shortlist:R.r1.shortlist.length,rankBasis:R.r1.rankBasis});
   fsPushShortlist(true);
   TAB='r1';render();
 };
@@ -6278,7 +6300,7 @@ function closureChecklist(){
   const incomplete=parts.filter(c=>subs[c.id]&&subs[c.id].airDeclined>0).length;
   const rowsOK=[
     ['Submission status',allSub?'All invited forwarders submitted':'Some forwarders excluded/declined — confirm formally',allSub],
-    ['Comparable cost','Rates compared on all-in '+cur()+'/kg over the same lane scope',true],
+    ['Comparable cost',R.r1.locked?({'volume-weighted':'Shortlist ranked on volume-weighted landed cost ('+cur()+') across the same lane scope','mixed':'Shortlist ranked on volume-weighted cost where lane volumes exist; simple average '+cur()+'/kg elsewhere','simple-average':'No lane volumes were loaded — shortlist ranked on simple average '+cur()+'/kg, not weighted by volume'}[R.r1.rankBasis]||('Rates compared on all-in '+cur()+'/kg over the same lane scope')):'Will rank on volume-weighted landed cost per lane (rate × volume ÷ total volume) once Round 1 is locked',R.r1.locked?R.r1.rankBasis!=='simple-average':true],
     ['Minimum charges',outliers?outliers+' abnormal minimum charge(s) vs median '+fmt(med,0):'No minimum-charge outliers detected',!outliers],
     ['Incomplete lanes',incomplete?incomplete+' forwarder(s) declined lanes — review coverage':'Full lane coverage',!incomplete],
     ['Access test',R.r1.statusPushedAt?'Shortlist status pushed '+new Date(R.r1.statusPushedAt).toLocaleString()+' — test a shortlisted and a non-shortlisted account':'Status not yet pushed to the portal',!!R.r1.statusPushedAt]];
