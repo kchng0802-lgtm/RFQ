@@ -118,6 +118,10 @@
 
   /* ---------- pills / tags ---------- */
   .pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:650;padding:3px 10px;border-radius:20px;letter-spacing:.01em}
+  .split-stepper{display:inline-flex;align-items:center;gap:6px;vertical-align:middle}
+  .split-stepper .btn{padding:2px 8px;min-width:0;line-height:1.2;font-size:11px}
+  .only-print{display:none}
+  @media print{.only-print{display:inline}}
   .pill.pending{background:var(--amber-soft);color:var(--amber)}
   .pill.done{background:var(--ok-soft);color:var(--ok)}
   .pill.dot::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
@@ -6121,6 +6125,8 @@ function ensureModel(){
   R.courier=R.courier||{week:{monday:'',year:''},accounts:{}};
   FS_ACCOUNTS.forEach(a=>{R.courier.accounts[a.id]=R.courier.accounts[a.id]||{name:'',matrix:null,fscPct:null,fscMonday:'',fscYear:'',fileName:''};});
   R.wb=R.wb||{approved:{}};
+  R.wb.defaultSplitPct=(R.wb.defaultSplitPct==null)?50:Math.max(0,Math.min(100,+R.wb.defaultSplitPct||50));
+  R.wb.splitPct=R.wb.splitPct||{}; // per-lane courier % override for the "cheaper at every weight" case; falls back to defaultSplitPct
   R.laneAwardReason=R.laneAwardReason||{};
   R.submissions2=R.submissions2||{};
 }
@@ -6508,16 +6514,16 @@ function computeWB(){
         if(bc==null){gap=true;break;}
         if(bc.cost<=f){breakW=x;best=bc;}else break;}
     }
-    let outcome,alloc,rule;
+    let outcome,alloc,rule,splitPct=null;
     if(missing.length){outcome='action';alloc='Action Required';rule='Resolve: '+missing.join('; ');}
-    else if(breakW!=null&&breakW>=1000){outcome='5050';alloc='50/50 all-weight allocation';rule='Courier cheaper at every tested weight → 50% '+best.e.a.provider+' '+best.e.a.country+' / 50% '+w.fwd.name;}
+    else if(breakW!=null&&breakW>=1000){outcome='5050';splitPct=(R.wb.splitPct[sc.id]!=null)?Math.max(0,Math.min(100,+R.wb.splitPct[sc.id])):R.wb.defaultSplitPct;alloc=splitPct+'% / '+(100-splitPct)+'% all-weight allocation';rule='Courier cheaper at every tested weight → '+splitPct+'% '+best.e.a.provider+' '+best.e.a.country+' / '+(100-splitPct)+'% '+w.fwd.name;}
     else if(breakW!=null){outcome='split';alloc='Weight-based split';rule='≤ '+breakW+' kg → '+best.e.a.provider+' '+best.e.a.country+'; > '+breakW+' kg → '+w.fwd.name;}
     else{outcome='forwarder';alloc='100% final RFQ forwarder';rule='Final RFQ forwarder cheaper throughout → 100% '+w.fwd.name;}
     // audit fields: base tariff at comparison weight (break kg, else RFQ min kg)
     const cmpW=breakW!=null?breakW:(minKg?Math.ceil(minKg*2)/2:null);
     let audit=null;if(!missing.length){const e=best?best.e:elig[0];const r=cmpW?cCost(e,cmpW):null;audit={provider:e.a.provider,country:e.a.country,name:e.c.name||(e.a.provider+' '+e.a.country),baseAt:r?r.base:null,cmpW,fscPct:num(e.c.fscPct),fscMonday:e.c.fscMonday,week:wk.monday+' ('+wk.year+')'};}
     const approved=R.wb.approved[sc.id]||null;
-    return {sc,w,ret,base,fsc,adder,min,allin,minKg,oc,dc,elig,breakW,best,outcome,alloc,rule,missing,samples,audit,approved,vol:laneVolume(sc),gap};
+    return {sc,w,ret,base,fsc,adder,min,allin,minKg,oc,dc,elig,breakW,best,outcome,alloc,rule,splitPct,missing,samples,audit,approved,vol:laneVolume(sc),gap};
   });
 }
 function wbAllApproved(){const rows=computeWB();return rows.length>0&&rows.every(r=>r.approved&&r.outcome!=='action');}
@@ -6528,6 +6534,30 @@ window.fsApproveWB=function(sid,all){
   if(window.logAudit&&n)logAudit(R.id,'wb_approve',n+' weight-break routing decision(s) approved',{n});
 };
 window.fsUnapproveWB=function(sid){delete R.wb.approved[sid];persist();render();};
+window.fsSetSplitPct=function(sid,v){
+  const n=Math.max(0,Math.min(100,Math.round(+v||0)));
+  R.wb.splitPct[sid]=n;
+  if(R.wb.approved[sid]){delete R.wb.approved[sid];toast('Split changed to '+n+'% — re-approve this lane.');}
+  persist();render();
+};
+window.fsAdjustSplitPct=function(sid,delta){
+  const cur=(R.wb.splitPct[sid]!=null)?+R.wb.splitPct[sid]:R.wb.defaultSplitPct;
+  window.fsSetSplitPct(sid,cur+delta);
+};
+window.fsResetSplitPct=function(sid){
+  delete R.wb.splitPct[sid];
+  if(R.wb.approved[sid]){delete R.wb.approved[sid];toast('Split reset to default ('+R.wb.defaultSplitPct+'%) — re-approve this lane.');}
+  persist();render();
+};
+window.fsSetDefaultSplitPct=function(v){
+  const n=Math.max(0,Math.min(100,Math.round(+v||0)));
+  R.wb.defaultSplitPct=n;
+  // only rows still using the default (no per-lane override) are affected — clear their stale approvals
+  const rows=computeWB();let cleared=0;
+  rows.forEach(r=>{if(r.outcome==='5050'&&R.wb.splitPct[r.sc.id]==null&&R.wb.approved[r.sc.id]){delete R.wb.approved[r.sc.id];cleared++;}});
+  toast('Default split set to '+n+'%'+(cleared?' — '+cleared+' approval(s) cleared for re-review':''));
+  persist();render();
+};
 window.viewWeightBreak=function(){
   ensureModel();
   if(!R.rfqClosed)return emptyCard('Confirm the final RFQ winners on Winner & Award first. The courier comparison starts from the final Round-2 forwarder winner, not preliminary Round-1 bids.');
@@ -6536,20 +6566,20 @@ window.viewWeightBreak=function(){
   const cnt=k=>rows.filter(r=>r.outcome===k).length;const apr=rows.filter(r=>r.approved).length;
   const stats=`<div class="statgrid" style="margin-bottom:20px">
     <div class="stat"><div class="lab">Airport lanes</div><div class="val">${rows.length}</div><div class="sub">${apr} approved</div></div>
-    <div class="stat"><div class="lab">50/50 all-weight</div><div class="val" style="color:#6d4bce">${cnt('5050')}</div><div class="sub">courier cheaper at every 0.5 kg</div></div>
+    <div class="stat"><div class="lab">Split all-weight</div><div class="val" style="color:#6d4bce">${cnt('5050')}</div><div class="sub">courier cheaper at every 0.5 kg · split % adjustable</div></div>
     <div class="stat"><div class="lab">Weight split</div><div class="val" style="color:var(--amber)">${cnt('split')}</div><div class="sub">courier below break, forwarder above</div></div>
     <div class="stat"><div class="lab">100% forwarder</div><div class="val" style="color:var(--ok)">${cnt('forwarder')}</div></div>
     <div class="stat"><div class="lab">Action Required</div><div class="val" style="color:${cnt('action')?'var(--navy)':'var(--ok)'}">${cnt('action')}</div><div class="sub">resolve before approval</div></div></div>`;
   const formula=`<div class="card"><div class="hd"><div><h2>Courier vs. final RFQ winner — confirmed rules</h2><div class="desc">Weight scan every 0.5 kg from 0.5 kg through 1,000 kg. Eligible courier = cheapest current FedEx/DHL account (origin-country account, current tariff + matching weekly FSC) at that weight.</div></div>
-    <div class="row-actions no-print"><button class="btn ghost sm" onclick="TAB='courier';render()">← Courier accounts</button><button class="btn sm" onclick="fsApproveWB(null,true)">✓ Approve all ready rows</button></div></div>
+    <div class="row-actions no-print"><label class="small" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><span class="muted">Default split when courier wins every weight:</span><span class="split-stepper"><button class="btn ghost sm" onclick="fsSetDefaultSplitPct(R.wb.defaultSplitPct-5)">−</button><b style="min-width:52px;text-align:center;display:inline-block">${R.wb.defaultSplitPct}% / ${100-R.wb.defaultSplitPct}%</b><button class="btn ghost sm" onclick="fsSetDefaultSplitPct(R.wb.defaultSplitPct+5)">+</button></span></label><button class="btn ghost sm" onclick="TAB='courier';render()">← Courier accounts</button><button class="btn sm" onclick="fsApproveWB(null,true)">✓ Approve all ready rows</button></div></div>
    <div class="bd" style="padding:0"><table><thead><tr><th>Calculation</th><th>Rule</th></tr></thead><tbody>
    <tr><td><b>RFQ minimum weight</b></td><td>Forwarder minimum charge ÷ forwarder <b>base</b> per-kg rate (not all-in; all-in/kg stays visible for audit)</td></tr>
    <tr><td><b>Forwarder cost at weight</b></td><td>max(minimum charge, base × weight) + (FSC + adder) × weight</td></tr>
    <tr><td><b>Courier cost at weight</b></td><td>Account base charge + (base charge × matching weekly FSC %)</td></tr>
    <tr><td><b>Break weight</b></td><td>Highest contiguous weight where courier ≤ final forwarder</td></tr>
-   <tr><td><b>Allocation</b></td><td>Cheaper at every weight → 50/50 · cheaper only below a break → split at the break · forwarder cheaper throughout → 100% forwarder · missing inputs → Action Required</td></tr></tbody></table></div></div>`;
+   <tr><td><b>Allocation</b></td><td>Cheaper at every weight → adjustable split, default ${R.wb.defaultSplitPct}/${100-R.wb.defaultSplitPct} and editable per lane below · cheaper only below a break → split at the break · forwarder cheaper throughout → 100% forwarder · missing inputs → Action Required</td></tr></tbody></table></div></div>`;
   const groups={};rows.forEach(r=>{groups[originCountry(r.sc.orig)]=groups[originCountry(r.sc.orig)]||[];groups[originCountry(r.sc.orig)].push(r);});
-  const badge=r=>r.outcome==='action'?'<span class="pill pending dot" style="background:#fdeef1;color:var(--navy)">Action Required</span>':r.outcome==='5050'?'<span class="pill" style="background:#efe9fb;color:#6d4bce">50/50</span>':r.outcome==='split'?'<span class="pill pending dot">Split</span>':'<span class="pill done dot">Forwarder</span>';
+  const badge=r=>r.outcome==='action'?'<span class="pill pending dot" style="background:#fdeef1;color:var(--navy)">Action Required</span>':r.outcome==='5050'?'<span class="pill" style="background:#efe9fb;color:#6d4bce">'+r.splitPct+'/'+(100-r.splitPct)+'</span>':r.outcome==='split'?'<span class="pill pending dot">Split</span>':'<span class="pill done dot">Forwarder</span>';
   const table=`<div class="card"><div class="hd"><div><h2>Final airport-lane weight-break table</h2><div class="desc">Final RFQ result · courier audit fields · weight decision · final selection. Resolve every Action Required row before approving the final award.</div></div></div>
    <div class="bd" style="padding:0;overflow:auto"><table style="font-size:12.5px"><thead><tr>
     <th>Origin</th><th>Lane</th><th class="num">Vol (kg)</th><th>R2 winner</th><th class="num">All-in/kg</th><th class="num">Base/kg</th><th class="num">Min chg</th><th class="num">RFQ min kg</th>
@@ -6563,8 +6593,8 @@ window.viewWeightBreak=function(){
     <td class="num">${r.audit&&r.audit.baseAt!=null?fmt(r.audit.baseAt,2)+'<div class="small muted">@'+r.audit.cmpW+' kg</div>':'—'}</td>
     <td class="num">${r.audit&&r.audit.fscPct!=null?fmt(r.audit.fscPct,1)+'%':'—'}</td><td class="small">${r.audit?esc(r.audit.fscMonday):'—'}</td><td class="small">${r.audit?esc(r.audit.week):'—'}</td>
     <td class="num"><b>${r.breakW!=null?(r.breakW>=1000?'1000+':r.breakW):'—'}</b></td>
-    <td class="small">${r.outcome==='5050'?'all weights (50%)':r.outcome==='split'?'0.5–'+r.breakW+' kg':'—'}</td>
-    <td class="small">${r.outcome==='5050'?'all weights (50%)':r.outcome==='split'?'> '+r.breakW+' kg':r.outcome==='forwarder'?'all weights':'—'}</td>
+    <td class="small">${r.outcome==='5050'?`all weights (<span class="split-stepper no-print"><button class="btn ghost sm" onclick="fsAdjustSplitPct('${r.sc.id}',-5)">−</button><b>${r.splitPct}%</b><button class="btn ghost sm" onclick="fsAdjustSplitPct('${r.sc.id}',5)">+</button></span><span class="only-print">${r.splitPct}%</span>${R.wb.splitPct[r.sc.id]!=null?` <a href="#" class="no-print" onclick="fsResetSplitPct('${r.sc.id}');return false" title="Reset to default (${R.wb.defaultSplitPct}%)" style="font-size:11px">reset</a>`:''})`:r.outcome==='split'?'0.5–'+r.breakW+' kg':'—'}</td>
+    <td class="small">${r.outcome==='5050'?'all weights ('+(100-r.splitPct)+'%)':r.outcome==='split'?'> '+r.breakW+' kg':r.outcome==='forwarder'?'all weights':'—'}</td>
     <td>${badge(r)}</td>
     <td class="small">${esc(r.alloc)}<div class="muted" style="font-size:11px">${esc(r.rule)}</div></td>
     <td class="no-print">${r.approved?`<span class="pill done dot" title="${esc(r.approved.by)} · ${esc(new Date(r.approved.at).toLocaleString())}">Approved</span> <button class="del" onclick="fsUnapproveWB('${r.sc.id}')" title="Revoke">×</button>`:(r.outcome==='action'?'':`<button class="btn sm" onclick="fsApproveWB('${r.sc.id}')">Approve</button>`)}</td>
