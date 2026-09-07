@@ -6834,4 +6834,142 @@ setTimeout(()=>{try{ensureModel();render();fsLoadRounds(true);}catch(e){console.
 })();
 
 </script>
+
+<!-- SIMPLE VIEW (toggleable grouped navigation) -->
+<style>
+html.fs-simple{font-size:16px}html.fs-simple body{font-size:16px;line-height:1.5;background:#f3f5f8}
+.fs-simple #loginGate{background:#122236!important}.fs-simple #loginGate>:not(#loginModal){display:none!important}
+.fs-simple #loginModal{background:transparent!important;position:fixed!important;padding:24px!important;overflow:auto;animation:none!important}
+.fs-simple #loginModal>div{max-width:420px!important;width:100%!important;padding:32px!important;display:block!important;animation:none!important}
+.fs-simple #loginModal button[onclick="hideLoginModal()"],.fs-simple #loginModal>div>div:last-child{display:none!important}
+.fs-simple #loginModal input{font-size:16px!important;height:46px!important}.fs-simple #loginBtn{font-size:16px!important;min-height:48px!important}
+.fs-simple body[data-user-role] header.top{position:relative!important;inset:auto!important;width:100%!important;height:auto!important;padding:20px 24px 0!important;background:#142235!important;overflow:visible!important;box-shadow:none!important}
+.fs-simple body[data-user-role] header.top>.wrap{max-width:1320px!important;width:100%!important;height:auto!important;padding:0!important;display:block!important;margin:auto!important}
+.fs-simple body[data-user-role] .brandrow{display:flex!important;gap:20px;align-items:center;justify-content:space-between}
+.fs-simple body[data-user-role] .brand{display:flex!important;flex-direction:row!important;align-items:center!important;gap:18px!important;padding:0!important;border:0!important}
+.fs-simple body[data-user-role] .blockup{margin:0!important}.fs-simple .brand .vrule{display:none}.fs-simple .brand h1{font-size:18px!important}.fs-simple #hSub{font-size:14px!important;color:#d1d9e5!important}
+.fs-simple body[data-user-role] .topbtns{position:static!important;inset:auto!important;width:auto!important;height:auto!important;display:flex!important;align-items:center!important;flex-wrap:wrap!important;padding:0!important;gap:8px!important;background:transparent!important;box-shadow:none!important;border:0!important}
+.fs-simple body[data-user-role] nav.tabs{position:static!important;inset:auto!important;display:flex!important;flex-direction:row!important;gap:6px!important;overflow:auto!important;width:100%!important;padding:18px 0 0!important;margin:0!important;background:transparent!important;border:0!important}
+.fs-simple nav.tabs button{flex:1;min-width:145px;display:flex!important;align-items:center!important;gap:8px!important;padding:14px!important;border-radius:9px 9px 0 0!important;text-align:left;font-size:15px!important;color:#dde6f2!important;background:#213248!important;border:0!important}
+.fs-simple nav.tabs button.active{color:#142235!important;background:#f3f5f8!important}.fs-simple nav.tabs button small{display:block;font-size:12px;color:inherit;font-weight:400;margin-top:3px}
+.fs-simple nav.tabs button .n{flex:none;width:26px!important;height:26px!important;font-size:14px!important;margin:0!important}.fs-simple nav.tabs button::after{display:none!important}
+.fs-simple body[data-user-role]>main{width:calc(100% - 48px)!important;max-width:1320px!important;margin:24px auto!important;padding:0!important;min-width:0!important}
+.fs-simple .card{border-radius:12px!important;border-color:#dce2eb!important;box-shadow:none!important}.fs-simple .card .hd{padding:18px!important}.fs-simple .card .bd{padding:18px!important}.fs-simple .card h2{font-size:17px!important}.fs-simple .card .desc{font-size:14px!important;max-width:80ch}
+.fs-simple input,.fs-simple select,.fs-simple textarea,.fs-simple .btn{font-size:14px!important}.fs-simple .btn{min-height:40px;padding:9px 14px!important}.fs-simple td,.fs-simple th{font-size:14px!important;line-height:1.45;padding:12px!important}.fs-simple label,.fs-simple .small,.fs-simple .hint{font-size:14px!important}
+.fs-simple .btn:focus-visible,.fs-simple summary:focus-visible{outline:3px solid #2e78bf;outline-offset:3px}.fs-simple .btn:disabled{opacity:.5;cursor:not-allowed}
+.fs-simple #forwarderPortal{font-size:16px!important}
+.fs-next{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 24px;padding:0 0 20px;border-bottom:1px solid #dce2eb}.fs-next h1{font-size:26px;line-height:1.25;color:#142235;margin:6px 0 8px;letter-spacing:-.025em}.fs-next p{font-size:16px;max-width:80ch;color:#536273;margin:0}.fs-next>.btn{flex-shrink:0}.fs-eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:#b30930}
+.fs-subnav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px}.fs-subnav .btn{border-radius:8px}
+.fs-details{margin:0 0 18px;border:1px solid #dce2eb;border-radius:10px;background:#fff;min-width:0}.fs-details>summary{padding:16px 18px;cursor:pointer;font-size:16px;font-weight:650;color:#142235}.fs-details[open]>summary{border-bottom:1px solid #e3e8ef}.fs-details>div{padding:18px}.fs-details .card:last-child{margin-bottom:0}.fs-details>.card{margin:0;border:0!important}
+#fsNavModeBtn{white-space:nowrap}
+@media(max-width:760px){.fs-simple body[data-user-role] header.top{padding:16px 12px 0!important}.fs-simple .brandrow{align-items:flex-start!important;flex-wrap:wrap}.fs-simple .brand{gap:8px!important}.fs-simple .brand .bword{font-size:13px!important}.fs-simple .brand h1{font-size:16px!important}.fs-simple body[data-user-role]>main{width:calc(100% - 24px)!important;margin:18px auto!important}.fs-simple nav.tabs button{min-width:125px;padding:10px!important}.fs-simple nav.tabs button small{display:none}.fs-next{display:block}.fs-next>.btn{margin-top:14px}.fs-next h1{font-size:23px}.fs-simple .card .hd{padding:14px!important}.fs-simple .card .bd{padding:14px!important}.fs-details>div{padding:12px}}
+@media print{.fs-next>.btn,.fs-subnav{display:none!important}.fs-next{margin-bottom:14px}.fs-simple body[data-user-role]>main{width:100%!important;margin:0!important}.fs-details{break-inside:auto}}
+</style>
+<script>
+/* ================================================================
+   SIMPLE VIEW — toggleable grouped navigation (ported from the
+   "FreightSphere Simplified RFQ v10" UX exploration, adapted to the
+   v12 tab set). This does NOT touch ranking, evaluation, courier,
+   award, or bid-desk logic — v12's own implementations (volume-
+   weighted shortlist, configurable Top-N, Round 2 targets, split
+   Courier Accounts / Weight-Break & Award, override-reason logging)
+   are all strictly newer than what that file had, so none of its
+   business logic is ported — only the navigation/UX shell, and only
+   as an opt-in toggle so the existing flat 12-tab view is unchanged
+   by default.
+   ================================================================ */
+(function(){
+'use strict';
+const MODE_KEY='fs_nav_mode';
+function navMode(){ try{ return localStorage.getItem(MODE_KEY)||'full'; }catch(e){ return 'full'; } }
+function applyClass(){ try{ document.documentElement.classList.toggle('fs-simple', navMode()==='simple'); }catch(e){} }
+function setNavMode(m){ try{ localStorage.setItem(MODE_KEY,m); }catch(e){} applyClass(); }
+applyClass(); // apply saved preference immediately, incl. on the login screen
+
+const groups=[
+  {label:'Set up RFQ', ids:['setup','vol'], start:'setup', hint:'Lanes · volumes · forwarders'},
+  {label:'Round 1', ids:['r1'], start:'r1', hint:'Collect · compare · shortlist'},
+  {label:'Final bid', ids:['r2'], start:'r2', hint:'Best & final · targets'},
+  {label:'Award', ids:['winner','eval','courier','wb'], start:'winner', hint:'Review · approve · courier'},
+  {label:'Reports', ids:['summary','yoy','fiveyr','tools'], start:'summary', hint:'Export · savings · history'},
+];
+const subLabels={setup:'RFQ details',vol:'Lanes & volumes',winner:'Award review',eval:'Service scoring',courier:'Courier accounts',wb:'Weight-break & award',summary:'Summary & export',yoy:'Previous period',fiveyr:'5-year history',tools:'Calculators'};
+function groupOf(tab){ return groups.find(g=>g.ids.includes(tab)); }
+function tabLocked(id){ const t=TABS.find(x=>x.id===id); return !!(t&&t.lock&&t.lock()); }
+function btn(label,onclick,cls,disabled){ return '<button class="btn '+(cls||'ghost')+'" onclick="'+onclick+'" '+(disabled?'disabled':'')+'>'+label+'</button>'; }
+
+window.fsGo=function(id){
+  if(tabLocked(id)){ toast('Complete the previous step first.'); return; }
+  TAB=id; render(); try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){}
+};
+
+function renderGroupedTabs(){
+  const nav=document.getElementById('tabs'); if(!nav) return;
+  nav.innerHTML=''; nav.classList.add('fs-grouped');
+  groups.forEach((g,i)=>{
+    const active=g.ids.includes(TAB);
+    const b=document.createElement('button');
+    b.className=active?'active':''; b.setAttribute('aria-current',active?'step':'false');
+    if(tabLocked(g.start)) b.disabled=true;
+    b.innerHTML='<span class="n">'+(i+1)+'</span><span><b>'+g.label+'</b><small>'+g.hint+'</small></span>';
+    b.onclick=()=>window.fsGo(g.start);
+    nav.appendChild(b);
+  });
+}
+function subnavHTML(){
+  const g=groupOf(TAB); if(!g||g.ids.length<2) return '';
+  return '<div class="fs-subnav">'+g.ids.map(id=>btn(subLabels[id]||id,"fsGo('"+id+"')",TAB===id?'':'ghost',tabLocked(id))).join('')+'</div>';
+}
+function progressBanner(){
+  let title='Prepare once, then reuse the same RFQ',copy='Confirm the lanes, forecast volumes and invited forwarders on the Setup and Volumes tabs.',next='Lanes & volumes',go="fsGo('vol')";
+  if(TAB==='r1'){ title='Compare Round 1 bids and lock the shortlist'; copy='Sync portal bids or upload Excel returns, then lock Round 1 once every forwarder has submitted or been formally excluded.'; next='Round 1'; go="fsGo('r1')"; }
+  else if(TAB==='r2'){ title='Collect the best-and-final round'; copy='Publish confidential lane targets, sync revised offers from shortlisted forwarders, then complete the round to open evaluation.'; next='Round 2'; go="fsGo('r2')"; }
+  else if(['winner','eval','courier','wb'].includes(TAB)){ title='Make the award decision'; copy='Complete service scoring, confirm the forwarder award, load courier accounts, then approve the weight-break routing.'; next='Weight-break & award'; go="fsGo('wb')"; }
+  else if(['summary','yoy','fiveyr','tools'].includes(TAB)){ title='Report and archive the decision'; copy='Download the Final Award Workbook and archive the completed cycle for the five-year report.'; next='Summary'; go="fsGo('summary')"; }
+  return '<section class="fs-next"><div><span class="fs-eyebrow">RFQ · SIMPLE VIEW</span><h1>'+title+'</h1><p>'+copy+'</p></div>'+btn(next,go,'')+'</section>'+subnavHTML();
+}
+
+// Original (flat, 12-tab) renderer — captured once, before we start switching on it.
+const flatRenderTabs = renderTabs;
+renderTabs = function(){
+  if(navMode()==='simple'){ renderGroupedTabs(); return; }
+  flatRenderTabs();
+};
+
+const coreRender = window.render;
+window.render = function(){
+  coreRender();
+  if(navMode()!=='simple') return;
+  const v=document.getElementById('view'); if(!v) return;
+  v.insertAdjacentHTML('afterbegin', progressBanner());
+  if(TAB==='setup'){
+    v.querySelectorAll('.card').forEach(card=>{
+      const h=card.querySelector('h2'); if(!h) return;
+      const t=h.textContent;
+      if(/guide map|round control|rfq profile/i.test(t)) return; // always-visible anchor cards
+      const d=document.createElement('details'); d.className='fs-details';
+      d.open=/forwarder|scope|lane/i.test(t);
+      const summary=document.createElement('summary'); summary.textContent=t;
+      card.parentNode.insertBefore(d,card); d.append(summary,card);
+    });
+  }
+  if((window.CURRENT_USER||{}).role==='viewer'){
+    v.querySelectorAll('input,select,textarea,button').forEach(el=>{ if(!el.closest('.fs-subnav,.fs-next')) el.disabled=true; });
+  }
+  installToggle();
+};
+
+function installToggle(){
+  const tb=document.querySelector('header.top .topbtns'); if(!tb) return;
+  let b=document.getElementById('fsNavModeBtn');
+  const label=()=> navMode()==='simple' ? '📋 All tabs' : '✨ Simple view';
+  if(!b){ b=document.createElement('button'); b.id='fsNavModeBtn'; b.className='btn ghost sm no-print';
+    b.onclick=()=>{ setNavMode(navMode()==='simple'?'full':'simple'); render(); };
+    tb.appendChild(b); }
+  b.textContent=label();
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(installToggle,600));
+})();
+
+</script>
 </body></html>
