@@ -185,6 +185,10 @@
   .muted{color:var(--muted)}.small{font-size:12px}.mt{margin-top:16px}
   .hide{display:none!important}
   .best{background:var(--ok-soft)!important;font-weight:700;color:var(--ok)}
+  .rank1{background:var(--ok-soft)!important;color:var(--ok)!important}
+  .rank2{background:var(--amber-soft)!important;color:var(--amber)!important}
+  .rank3{background:var(--navy-soft)!important;color:var(--navy)!important}
+  select.rankbox{font-weight:700;border:1px solid var(--brd)}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;
     padding:12px 20px;border-radius:11px;font-size:13px;font-weight:550;opacity:0;pointer-events:none;transition:.25s cubic-bezier(.2,.8,.2,1);z-index:60;box-shadow:0 16px 40px -8px rgba(0,0,0,.4)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -3402,49 +3406,51 @@ function viewWinner(){
      </table></div></div>`;
 
     // Lane-level award with override radio buttons
+    const rankStyle=(rank)=>rank===0?'background:var(--ok-soft);color:var(--ok)':rank===1?'background:var(--amber-soft);color:var(--amber)':rank===2?'background:var(--navy-soft);color:var(--navy)':'';
     const laneCard=`<div class="card"><div class="hd"><div><h2>Lane-level award</h2>
-      <div class="desc">Select which forwarder is awarded each lane. Defaults to lowest rate. Override to ensure backup coverage across forwarders.</div></div></div>
+      <div class="desc">Pick which forwarder is awarded each lane. The box itself is colored by rank — 🟢 rank 1 (cheapest), 🟡 rank 2, 🔴 rank 3 — so a choice away from green is visible at a glance. Picking anything other than rank 1 still requires a written justification, logged below.</div></div></div>
      <div class="bd" style="padding:0;overflow:auto"><table>
        <thead><tr><th>Origin</th><th>Lane</th><th class="num">Vol (kg)</th>
-         ${fwds.map(f=>`<th class="num" style="min-width:90px">${esc(f.c.name)}</th>`).join('')}
+         <th style="min-width:240px">Select forwarder</th>
          <th>Awarded to</th></tr></thead>
        <tbody>
          ${ctryOrder.map(ctry=>{
            const gLanes=laneData.filter(la=>la.ctry===ctry);
            const g=groups[ctry];
            return gLanes.map((la,li)=>{
-             const allR=fwds.map(f=>{
-               const r=rateOf(round,f.c.id,la.sc.id);
-               const isLowest=la.primary&&f.c.id===la.primary.c.id;
-               const isAwarded=la.effectiveFwd&&f.c.id===la.effectiveFwd.c.id;
-               const radioName='aw_'+la.sc.id;
-               const checked=isAwarded?'checked':'';
-               const disabled=r==null||r<=0?'disabled':'';
-               return `<td class="num ${isAwarded?'best':''}" style="white-space:nowrap">
-                 <label style="cursor:${disabled?'default':'pointer'};display:flex;align-items:center;gap:4px;justify-content:flex-end${closed?' ;pointer-events:none':''}">
-                   <input type="radio" name="${radioName}" value="${f.c.id}" ${checked} ${disabled} onchange="setLaneAward('${la.sc.id}','${f.c.id}')">
-                   <span>${r!=null?fmt(r,3):'<span class="muted">N/A</span>'}</span>
-                 </label></td>`;
-             });
+             const curRank=la.effectiveFwd?la.rates.findIndex(x=>x.c.id===la.effectiveFwd.c.id):-1;
+             const boxStyle=curRank>=0?rankStyle(curRank):'';
+             const options=la.rates.map((x,ri)=>{
+               const sel=la.effectiveFwd&&x.c.id===la.effectiveFwd.c.id?'selected':'';
+               return `<option value="${x.c.id}" ${sel} style="${rankStyle(ri)}">${ri+1}. ${esc(x.c.name)} — ${fmt(x.r,3)}</option>`;
+             }).join('');
+             const selectHtml=la.rates.length?
+               `<select class="rankbox" onchange="setLaneAward('${la.sc.id}',this.value)" ${closed?'disabled':''} style="width:100%;border-radius:8px;padding:8px 10px;font-size:13px;${boxStyle}">${options}</select>`
+               :'<span class="muted small">No comparable rates</span>';
              return `<tr>
                ${li===0?`<td rowspan="${gLanes.length}" style="vertical-align:top;border-right:3px solid var(--pri);background:var(--bg2)"><b>${esc(ctry)}</b><div class="small muted">${gLanes.length} lanes</div>${g.totalVol?`<div class="small muted">${fmt0(g.totalVol)} kg</div>`:''}</td>`:''}
                <td><b>${esc(la.sc.name)}</b></td>
                <td class="num">${la.vol?fmt0(la.vol):'—'}</td>
-               ${allR.join('')}
+               <td>${selectHtml}</td>
                <td><b style="color:var(--ok)">${la.effectiveFwd?esc(la.effectiveFwd.c.name):'—'}</b>
                  ${la.override?'<span class="small" style="color:var(--amber)" title="Manually overridden"> ✎</span>':''}</td>
              </tr>`;}).join('');
          }).join('')}
        </tbody>
-     </table></div></div>`;
+     </table></div>
+     <div class="bd" style="padding-top:0"><div class="flex wrapf small" style="gap:14px">
+       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--ok);margin-right:6px"></span><b>Rank 1</b> — cheapest</span>
+       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--amber);margin-right:6px"></span><b>Rank 2</b> — second cheapest</span>
+       <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--navy);margin-right:6px"></span><b>Rank 3</b> — third cheapest</span>
+     </div></div></div>`;
 
     // Rate comparison
     const rateCard=fwds.length>1?`<div class="card"><div class="hd"><div><h2>Rate comparison</h2>
-      <div class="desc">All rates side by side. Green = awarded forwarder.</div></div></div>
+      <div class="desc">All rates side by side, colored by rank — 🟢 rank 1 · 🟡 rank 2 · 🔴 rank 3 — regardless of which one is actually awarded.</div></div></div>
      <div class="bd" style="padding:0;overflow:auto"><table>
        <thead><tr><th>Lane</th>${fwds.map(f=>`<th class="num">${esc(f.c.name)}</th>`).join('')}<th>Awarded</th></tr></thead>
        <tbody>${laneData.map(la=>{
-         const allR=fwds.map(f=>{const r=rateOf(round,f.c.id,la.sc.id);const aw=la.effectiveFwd&&f.c.id===la.effectiveFwd.c.id;return `<td class="num ${aw?'best':''}">${r!=null?fmt(r,3):'<span class="muted">N/A</span>'}</td>`;});
+         const allR=fwds.map(f=>{const r=rateOf(round,f.c.id,la.sc.id);const rk=r!=null?la.rates.findIndex(x=>x.c.id===f.c.id):-1;const aw=la.effectiveFwd&&f.c.id===la.effectiveFwd.c.id;const style=rk>=0?rankStyle(rk):'';return `<td class="num${aw?' best':''}" style="${aw?'':style}">${r!=null?fmt(r,3):'<span class="muted">N/A</span>'}</td>`;});
          return `<tr><td><b>${esc(la.sc.name)}</b></td>${allR.join('')}<td><b>${la.effectiveFwd?esc(la.effectiveFwd.c.name):'—'}</b>${la.override?' <span class="small" style="color:var(--amber)">✎</span>':''}</td></tr>`;
        }).join('')}</tbody></table></div></div>`:'';
 
