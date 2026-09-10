@@ -2594,7 +2594,20 @@ function participants(round){
   return sl;
 }
 function rd(round){return round===1?R.r1:R.r2}
-function rateOf(round,cid,sid){const r=rd(round).rates?.[cid]?.[sid];return (r!=null&&r!=='')?num(r):null;}
+function rateOf(round,cid,sid){
+  const r=rd(round).rates?.[cid]?.[sid];
+  const stored=(r!=null&&r!=='')?num(r):null;
+  if(stored==null||!isAir())return stored;
+  const c=carrier(cid),sc=(R.scope||[]).find(s=>s.id===sid);
+  if(!c||!sc||!sc.orig||!sc.dest)return stored;
+  const oU=(sc.orig||'').toUpperCase(),dU=(sc.dest||'').toUpperCase();
+  const lines=(R.returnsList||[]).filter(x=>x.mode==='air'&&x.forwarder===c.name&&(x.origin||'').toUpperCase()===oU&&(x.dest||'').toUpperCase()===dU);
+  const line=lines.find(x=>(x.round||1)===round)||lines.find(x=>(x.round||1)===2)||lines[0];
+  if(!line||line.bs==null)return stored; // no line-level detail (e.g. manual rate-grid entry) — use the flat number as before
+  const wtSet=num((R.cmp||{}).wt);const w=(wtSet!=null&&wtSet>0)?wtSet:100;
+  const min=num(line.min)||0,bs=num(line.bs)||0,fsc=num(line.fsc)||0,add=num(line.adder)||0;
+  return Math.max(min,bs*w)/w+fsc+add; // effective per-kg rate at the evaluation weight, minimum-charge aware
+}
 function setRate(round,cid,sid,v){const R_=rd(round);R_.rates[cid]=R_.rates[cid]||{};if(v==null)delete R_.rates[cid][sid];else R_.rates[cid][sid]=v;persist();}
 function carrierTotal(round,cid){ // sum of scope costs (lower=better); avg for air
   const vals=R.scope.map(s=>rateOf(round,cid,s.id)).filter(v=>v!=null);
@@ -6129,6 +6142,7 @@ function ensureModel(){
   R.wb.splitPct=R.wb.splitPct||{}; // per-lane courier % override for the "cheaper at every weight" case; falls back to defaultSplitPct
   R.laneAwardReason=R.laneAwardReason||{};
   R.submissions2=R.submissions2||{};
+  R.cmp=R.cmp||{};R.cmp.wt=(R.cmp.wt==null)?100:R.cmp.wt;
 }
 
 /* ================================================================
@@ -6153,11 +6167,12 @@ function guideMapCard(){
 }
 function shortlistCard(){
   return `<div class="card"><div class="hd"><div><h2>Round controls</h2><div class="desc">Shortlist count controls Round 2 access. Bid eligibility (Air / Trucking / both) is set per forwarder above and prevents a company opening an RFQ mode it is not assigned.</div></div></div>
-  <div class="bd"><div class="grid g3" style="align-items:end">
+  <div class="bd"><div class="grid g4" style="align-items:end">
     <div><label class="fld">Shortlist count (Top N)</label><input class="yellow" type="number" min="1" max="10" value="${R.profile.shortlistN||3}" onchange="setShortlistN(this.value)"></div>
     <div><label class="fld">Currency</label><div style="padding:8px 0;font-weight:700">${esc(cur())}</div></div>
     <div><label class="fld">Contract period</label><div style="padding:8px 0;font-weight:700">${esc(R.profile.from||'—')} → ${esc(R.profile.to||'—')}</div></div>
-  </div><div class="hint mt">${infoSVG()}<div><b>Data quality:</b> use consistent three-letter airport codes. For trucking keep corridor names aligned with the award categories used later.</div></div></div></div>`;
+    <div><label class="fld">Evaluation weight (air, kg)</label><span class="split-stepper"><button class="btn ghost sm" onclick="fsSetEvalWt((num(R.cmp&&R.cmp.wt)||100)-5)">−</button><b style="min-width:56px;text-align:center;display:inline-block">${num(R.cmp&&R.cmp.wt)||100} kg</b><button class="btn ghost sm" onclick="fsSetEvalWt((num(R.cmp&&R.cmp.wt)||100)+5)">+</button></span></div>
+  </div><div class="hint mt">${infoSVG()}<div><b>Data quality:</b> use consistent three-letter airport codes. For trucking keep corridor names aligned with the award categories used later. <b>Evaluation weight</b> is the shipment size airfreight forwarders are ranked at — it makes minimum charges count properly instead of only the per-kg rate (see Round 1 → Cost ranking by country).</div></div></div></div>`;
 }
 
 /* ================================================================
@@ -6324,6 +6339,51 @@ window.fsDownloadBaselineTemplate=function(){
 };
 
 /* ---------- viewRound wrapper ---------- */
+window.fsSetEvalWt=function(v){
+  const n=Math.max(0.5,Math.min(2000,+v||100));
+  R.cmp=R.cmp||{};R.cmp.wt=n;persist();render();
+};
+/* Cost ranking by country — landed cost per lane, grouped by origin country, using the
+   same minimum-charge-aware formula now built into rateOf(). Built directly from
+   R.returnsList line detail (via fsRetLine, already used by the weight-break table) so the
+   ranking can show WHY a forwarder ranks where it does (min charge, base rate, breakeven kg),
+   not just a bare number. */
+function costRankingCard(round){
+  if(!isAir())return '';
+  const subs=round===1?(R.submissions||{}):(R.submissions2||{});
+  const parts=activeCarriers().filter(c=>subs[c.id]);
+  if(parts.length<1)return '';
+  const wt=num(R.cmp&&R.cmp.wt)!=null?num(R.cmp.wt):100;
+  const lanes=R.scope.filter(s=>s.orig&&s.dest).map(sc=>{
+    const ranked=parts.map(c=>({c,eff:rateOf(round,c.id,sc.id),line:fsRetLine(c.name,sc.orig,sc.dest,round)}))
+      .filter(x=>x.eff!=null&&x.eff>0).sort((a,b)=>a.eff-b.eff);
+    return {sc,oc:originCountry(sc.orig),ranked};
+  }).filter(l=>l.ranked.length);
+  if(!lanes.length)return '';
+  const byCountry={};lanes.forEach(l=>{(byCountry[l.oc]=byCountry[l.oc]||[]).push(l);});
+  let bodyRows='';
+  Object.keys(byCountry).sort().forEach(oc=>{
+    const laneGroup=byCountry[oc];
+    const countryRowspan=laneGroup.reduce((n,l)=>n+l.ranked.length,0);
+    let firstOfCountry=true;
+    laneGroup.forEach(l=>{
+      let firstOfLane=true;
+      l.ranked.forEach((x,ri)=>{
+        const be=(x.line&&x.line.bs)?((num(x.line.min)||0)/(num(x.line.bs)||1)):null;
+        const detail=(x.line&&x.line.bs!=null)?('min '+fmt(num(x.line.min)||0,0)+' · base '+fmt(num(x.line.bs)||0,3)+'/kg'+(be!=null?' · breakeven '+fmt(be,0)+'kg':'')):'no line detail — flat rate used';
+        bodyRows+='<tr'+(ri===0?' style="background:#eefaf3"':'')+'>'
+          +(firstOfCountry?'<td rowspan="'+countryRowspan+'" style="vertical-align:top;border-right:3px solid var(--navy);background:var(--teal-soft)"><b>'+esc(oc)+'</b></td>':'')
+          +(firstOfLane?'<td rowspan="'+l.ranked.length+'" style="vertical-align:top"><b>'+esc(l.sc.name)+'</b>'+(l.sc.orig&&l.sc.dest?'<div class="small muted">'+esc(l.sc.orig)+'–'+esc(l.sc.dest)+'</div>':'')+'</td>':'')
+          +'<td>'+(ri+1)+'</td><td>'+(ri===0?'🏆 ':'')+esc(x.c.name)+'</td><td class="num"><b>'+fmt(x.eff,3)+'</b></td><td class="small muted">'+detail+'</td></tr>';
+        firstOfCountry=false;firstOfLane=false;
+      });
+    });
+  });
+  return `<div class="card"><div class="hd"><div><h2>Cost ranking by country — landed cost at ${wt}kg</h2><div class="desc">Ranks each forwarder on landed cost per kg at the evaluation weight — max(minimum charge, base × weight) ÷ weight + FSC + adder — instead of the raw quoted rate, so a low per-kg rate hidden behind a high minimum charge no longer looks artificially cheap for typical shipment sizes.</div></div>
+    <div class="row-actions no-print"><label class="small" style="display:flex;align-items:center;gap:6px"><span class="muted">Evaluation weight:</span><span class="split-stepper"><button class="btn ghost sm" onclick="fsSetEvalWt((num(R.cmp&&R.cmp.wt)||100)-5)">−</button><b style="min-width:60px;text-align:center;display:inline-block">${wt} kg</b><button class="btn ghost sm" onclick="fsSetEvalWt((num(R.cmp&&R.cmp.wt)||100)+5)">+</button></span></label></div></div>
+   <div class="bd" style="padding:0;overflow:auto"><table><thead><tr><th>Country</th><th>Lane</th><th>Rank</th><th>Forwarder</th><th class="num">Landed rate (${cur()}/kg)</th><th>Detail</th></tr></thead><tbody>${bodyRows}</tbody></table></div>
+   <div class="bd" style="padding-top:0"><div class="hint">${infoSVG()}<div><b>Breakeven kg</b> = minimum charge ÷ base rate — below that weight you pay the flat minimum regardless of the per-kg rate; above it the per-kg rate drives cost. Changing the evaluation weight updates this ranking and also feeds Round 2 targets, evaluation cost scores, and the default lane award.</div></div></div></div>`;
+}
 const viewRound_base=window.viewRound;
 window.viewRound=function(round){
   ensureModel();
@@ -6334,8 +6394,8 @@ window.viewRound=function(round){
     <div class="bd small muted">Manual Excel returns imported on the Volumes tab remain supported. Synced bids overwrite that forwarder's lines for this round.</div></div>`;
   const tmpl=`<div class="hint" style="margin-bottom:16px">${infoSVG()}<div><b>Current-cost baseline:</b> <a href="#" onclick="fsDownloadBaselineTemplate();return false">download the template</a> (Mode · Origin · Destination · Lane · Current all-in rate · Currency), then upload it below. Confirm matched-lane coverage before using savings for approval.</div></div>`;
   html=scheduleCard(round)+sync+(round===1?tmpl:'')+html;
-  if(round===1)html+=targetsCard()+closureChecklist();
-  if(round===2)html+=`<div class="card"><div class="hd"><div><h2>Target signal legend (what shortlisted forwarders see)</h2></div></div><div class="bd"><div class="flex wrapf small" style="gap:14px">${sigLegend()}</div><div class="small muted mt">${R.r2targetsPublished?'Targets published '+esc(new Date(R.r2targetsPublishedAt).toLocaleString()):'Targets not yet published — go to Round 1 tab → Round 2 targets.'}</div></div></div>`;
+  if(round===1)html+=costRankingCard(1)+targetsCard()+closureChecklist();
+  if(round===2)html+=costRankingCard(2)+`<div class="card"><div class="hd"><div><h2>Target signal legend (what shortlisted forwarders see)</h2></div></div><div class="bd"><div class="flex wrapf small" style="gap:14px">${sigLegend()}</div><div class="small muted mt">${R.r2targetsPublished?'Targets published '+esc(new Date(R.r2targetsPublishedAt).toLocaleString()):'Targets not yet published — go to Round 1 tab → Round 2 targets.'}</div></div></div>`;
   return html;
 };
 
