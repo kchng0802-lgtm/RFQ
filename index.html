@@ -6909,13 +6909,14 @@ TABS.length=0;
   {id:'winner',n:6,label:'Winner & Award'},
   {id:'courier',n:7,label:'Courier Accounts',lock:()=>!R.rfqClosed,badge:()=>R.rfqClosed?(allAccountsReady().list.filter(x=>x.s.ready).length+'/5'):'🔒'},
   {id:'wb',n:8,label:'Weight-Break & Award',lock:()=>!R.rfqClosed},
-  {id:'summary',n:9,label:'Summary'},
-  {id:'yoy',n:10,label:'YoY'},
-  {id:'fiveyr',n:11,label:'5-Year Report'},
-  {id:'tools',n:12,label:'Tools'},
+  {id:'shipments',n:9,label:'Shipments',badge:()=>(window.SHIPMENTS_CACHE?window.SHIPMENTS_CACHE.length:0)||''},
+  {id:'summary',n:10,label:'Summary'},
+  {id:'yoy',n:11,label:'YoY'},
+  {id:'fiveyr',n:12,label:'5-Year Report'},
+  {id:'tools',n:13,label:'Tools'},
 ].forEach(t=>TABS.push(t));
 
-const VIEWS={setup:()=>viewSetup(),vol:()=>viewVolumes(),r1:()=>viewRound(1),r2:()=>viewRound(2),eval:()=>viewEval(),winner:()=>viewWinner(),courier:()=>viewCourierAccounts(),wb:()=>viewWeightBreak(),summary:()=>viewSummary(),yoy:()=>viewYoY(),fiveyr:()=>viewFiveYear(),tools:()=>viewTools()};
+const VIEWS={setup:()=>viewSetup(),vol:()=>viewVolumes(),r1:()=>viewRound(1),r2:()=>viewRound(2),eval:()=>viewEval(),winner:()=>viewWinner(),courier:()=>viewCourierAccounts(),wb:()=>viewWeightBreak(),shipments:()=>(window.viewShipments?window.viewShipments():emptyCard('Loading…')),summary:()=>viewSummary(),yoy:()=>viewYoY(),fiveyr:()=>viewFiveYear(),tools:()=>viewTools()};
 window.render=function(){
   ensureModel();
   if(!VIEWS[TAB])TAB='setup';
@@ -6937,6 +6938,8 @@ function applyReadOnly(){
 }
 // evaluators land on the scoring screen
 document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{if(fsRole()==='evaluator'&&R.r2.complete){TAB='eval';render();}},900);});
+// Expose a few helpers used by later modules so they don't need to reimplement this closure's logic
+window.laneVolume=laneVolume;window.fsRetLine=fsRetLine;window.courierBase=courierBase;window.acctStatus=acctStatus;window.allAccountsReady=allAccountsReady;window.FS_ACCOUNTS=FS_ACCOUNTS;window.ctryCode=ctryCode;
 // first paint with new tabs + rounds cache
 setTimeout(()=>{try{ensureModel();render();fsLoadRounds(true);}catch(e){console.warn(e);}},350);
 })();
@@ -6999,9 +7002,9 @@ const groups=[
   {label:'Round 1', ids:['r1'], start:'r1', hint:'Collect · compare · shortlist'},
   {label:'Final bid', ids:['r2'], start:'r2', hint:'Best & final · targets'},
   {label:'Award', ids:['winner','eval','courier','wb'], start:'winner', hint:'Review · approve · courier'},
-  {label:'Reports', ids:['summary','yoy','fiveyr','tools'], start:'summary', hint:'Export · savings · history'},
+  {label:'Reports', ids:['shipments','summary','yoy','fiveyr','tools'], start:'shipments', hint:'Shipments · export · savings · history'},
 ];
-const subLabels={setup:'RFQ details',vol:'Lanes & volumes',winner:'Award review',eval:'Service scoring',courier:'Courier accounts',wb:'Weight-break & award',summary:'Summary & export',yoy:'Previous period',fiveyr:'5-year history',tools:'Calculators'};
+const subLabels={setup:'RFQ details',vol:'Lanes & volumes',winner:'Award review',eval:'Service scoring',courier:'Courier accounts',wb:'Weight-break & award',shipments:'Shipment analysis',summary:'Summary & export',yoy:'Previous period',fiveyr:'5-year history',tools:'Calculators'};
 function groupOf(tab){ return groups.find(g=>g.ids.includes(tab)); }
 function tabLocked(id){ const t=TABS.find(x=>x.id===id); return !!(t&&t.lock&&t.lock()); }
 function btn(label,onclick,cls,disabled){ return '<button class="btn '+(cls||'ghost')+'" onclick="'+onclick+'" '+(disabled?'disabled':'')+'>'+label+'</button>'; }
@@ -7250,6 +7253,269 @@ window.closeRFQ=function(){
       logAudit(R.id,'award_approved','RFQ approved and closed — '+snap.length+' lane(s) awarded, '+cur()+' '+Math.round(savingsTot)+' projected annual savings vs current baseline',{stage:'Approval',lanes:snap});
     }catch(e){}
   }
+};
+})();
+
+</script>
+<script>
+/* ================================================================
+   SHIPMENTS — Phase 2 foundation + Minimum Charge Analysis (spec §2)
+   Imports actual historical shipments (e.g. the daily BROADCOM
+   auto-report) into the rfq_shipments table (kept separate from the
+   rfq_projects JSON blob — see migration note), then computes, per
+   shipment, using that shipment's ACTUAL forwarder's ACTUAL submitted
+   rate structure for that lane:
+     Calculated Freight = Chargeable Weight × Base Rate
+     Actual Freight     = MAX(Minimum Charge, Calculated Freight)
+     Min Hit            = Calculated Freight < Minimum Charge
+     Min Premium        = Minimum Charge − Calculated Freight (if hit)
+   Courier-vs-air per shipment, historical bid simulation, the monthly
+   dashboard and the executive Avoidable Cost KPI are NOT in this pass
+   — they build on this same shipment cache and come next.
+   ================================================================ */
+(function(){
+'use strict';
+
+function esc2(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function f3(n){return n==null?'—':Number(n).toFixed(3);}
+function f0(n){return n==null?'—':Math.round(n).toLocaleString();}
+function f1(n){return n==null?'—':Number(n).toFixed(1);}
+
+window.SHIPMENTS_CACHE=window.SHIPMENTS_CACHE||null;
+
+/* ---------- column-fuzzy CSV/XLSX parsing (same pattern as uploadBaseline/importCombinedReturn) ---------- */
+function findCol(H,...syns){for(const s of syns){const i=H.findIndex(h=>h.includes(s));if(i>=0)return i;}return -1;}
+function parseShipmentFile(aoa){
+  let hr=-1;
+  for(let i=0;i<Math.min(aoa.length,20);i++){
+    const row=(aoa[i]||[]).map(x=>String(x||'').toLowerCase());
+    if(row.some(c=>c.includes('shipment')||c.includes('awb')||c.includes('chargeable')||c.includes('origin'))){hr=i;break;}
+  }
+  if(hr<0)throw new Error('Could not find a header row (looked for "Shipment", "AWB", "Origin" or "Chargeable").');
+  const H=(aoa[hr]||[]).map(x=>String(x||'').toLowerCase().trim());
+  const iRef=findCol(H,'shipment id','shipment ref','shipment no','awb','tracking','reference','ship id');
+  const iDate=findCol(H,'ship date','shipment date','date','pickup date','departure date');
+  const iOrig=findCol(H,'origin','from','orig');
+  const iDest=findCol(H,'dest','destination','to');
+  const iLane=findCol(H,'lane','route');
+  const iDiv=findCol(H,'division','project','bu','business unit');
+  const iFwd=findCol(H,'forwarder','carrier','vendor','airline');
+  const iMode=findCol(H,'mode','service type','transport mode');
+  const iWt=findCol(H,'chargeable weight','chargeable wt','chargeable','cw','actual weight','weight (kg)','weight');
+  const iCost=findCol(H,'actual freight','freight cost','total cost','amount','cost (usd)','cost','invoice amount','charge');
+  const iCur=findCol(H,'currency','curr');
+  if(iWt<0)throw new Error('No chargeable-weight column found (looked for "Chargeable Weight", "CW", "Weight").');
+  const rows=[];
+  for(let i=hr+1;i<aoa.length;i++){
+    const row=aoa[i]||[];
+    const orig=iOrig>=0?String(row[iOrig]||'').trim().toUpperCase():'';
+    const dest=iDest>=0?String(row[iDest]||'').trim().toUpperCase():'';
+    let lane=iLane>=0?String(row[iLane]||'').trim():'';
+    if(!lane&&orig&&dest)lane=orig+'-'+dest;
+    if(!lane&&!orig)continue; // no lane info at all — skip
+    const wt=num(row[iWt]);
+    if(wt==null||wt<=0)continue;
+    let dateVal=iDate>=0?row[iDate]:null;
+    let dateStr=null;
+    if(dateVal instanceof Date)dateStr=dateVal.toISOString().slice(0,10);
+    else if(typeof dateVal==='number'&&dateVal>20000){ // Excel serial date
+      const d=new Date(Math.round((dateVal-25569)*86400*1000));dateStr=d.toISOString().slice(0,10);
+    } else if(dateVal){
+      const d=new Date(String(dateVal));if(!isNaN(d))dateStr=d.toISOString().slice(0,10);
+    }
+    rows.push({
+      shipment_ref:iRef>=0?String(row[iRef]||'').trim():null,
+      ship_date:dateStr,
+      origin:orig||null,dest:dest||null,lane:lane||null,
+      division:iDiv>=0?String(row[iDiv]||'').trim():null,
+      forwarder:iFwd>=0?String(row[iFwd]||'').trim():null,
+      mode:iMode>=0?(String(row[iMode]||'air').toLowerCase().includes('truck')?'trucking':'air'):'air',
+      chargeable_weight:wt,
+      actual_freight_cost:iCost>=0?num(row[iCost]):null,
+      currency:iCur>=0?String(row[iCur]||'').trim().toUpperCase()||null:null,
+    });
+  }
+  return {rows,detected:{iRef,iDate,iOrig,iDest,iLane,iDiv,iFwd,iMode,iWt,iCost,iCur},headerRow:hr};
+}
+
+window.fsUploadShipments=function(ev){
+  const f=ev.target.files[0];if(!f)return;
+  if(!window.XLSX){toast('SheetJS not loaded.');ev.target.value='';return;}
+  const st=document.getElementById('shipUploadStatus');
+  if(st)st.innerHTML='<span class="small muted">Parsing '+esc2(f.name)+'…</span>';
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+      const sn=wb.SheetNames.find(n=>/ship|report|data/i.test(n))||wb.SheetNames[0];
+      const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+      const {rows,detected}=parseShipmentFile(aoa);
+      if(!rows.length){if(st)st.innerHTML='<div class="hint warn mt">'+infoSVG('#b45309')+'<div>No usable shipment rows found. Check the file has a chargeable-weight column and at least an origin or lane.</div></div>';ev.target.value='';return;}
+      const sb=window.getSB&&window.getSB();
+      if(!sb){if(st)st.innerHTML='<span style="color:#cc092f">Supabase not loaded — cannot import.</span>';ev.target.value='';return;}
+      if(st)st.innerHTML='<span class="small muted">Uploading '+rows.length+' shipment(s)…</span>';
+      const me=(JSON.parse(sessionStorage.getItem('rfqmgr_auth_v3')||'{}').u||{}).username||'admin';
+      const chunk=500;let inserted=0,failed=0;
+      for(let i=0;i<rows.length;i+=chunk){
+        const batch=rows.slice(i,i+chunk).map(r=>Object.assign({},r,{rfq_id:R.id,source_file:f.name,uploaded_by:me}));
+        try{const {error}=await sb.from('rfq_shipments').insert(batch);if(error)throw error;inserted+=batch.length;}
+        catch(err){failed+=batch.length;console.warn('shipment batch failed',err);}
+      }
+      if(st)st.innerHTML=failed?
+        '<div class="hint warn mt">'+infoSVG('#b45309')+'<div><b>'+inserted+'</b> imported, <b>'+failed+'</b> failed — check console for the error.</div></div>':
+        '<div class="hint mt" style="background:var(--ok-soft);border-color:#c7e6d5">'+infoSVG('#12805c')+'<div><b>✓ '+inserted+' shipment(s) imported.</b> Columns detected: '+
+          [['Ref',detected.iRef],['Date',detected.iDate],['Origin',detected.iOrig],['Dest',detected.iDest],['Lane',detected.iLane],['Division',detected.iDiv],['Forwarder',detected.iFwd],['Weight',detected.iWt],['Cost',detected.iCost]]
+            .map(([label,idx])=>label+(idx>=0?' ✓':' —')).join(' · ')+
+          '</div></div>';
+      if(window.logAudit)logAudit(R.id,'shipment_import',inserted+' shipment(s) imported from '+f.name+(failed?' ('+failed+' failed)':''),{inserted,failed,file:f.name});
+      await window.fsSyncShipments();
+    }catch(err){ if(st)st.innerHTML='<span style="color:#cc092f">Error: '+esc2(err.message)+'</span>'; }
+    ev.target.value='';
+  };
+  reader.readAsArrayBuffer(f);
+};
+
+window.fsSyncShipments=async function(){
+  const sb=window.getSB&&window.getSB();if(!sb){toast('Supabase not loaded.');return;}
+  try{
+    let all=[],from=0;const page=1000;
+    while(true){
+      const {data,error}=await sb.from('rfq_shipments').select('*').eq('rfq_id',R.id).order('ship_date',{ascending:true}).range(from,from+page-1);
+      if(error)throw error;
+      all=all.concat(data||[]);
+      if(!data||data.length<page)break;
+      from+=page;
+    }
+    window.SHIPMENTS_CACHE=all;
+    if(TAB==='shipments')render();
+    toast(all.length+' shipment(s) loaded.');
+  }catch(e){toast('Sync failed: '+e.message);}
+};
+window.fsClearShipments=async function(){
+  if(!confirm('Delete ALL '+(window.SHIPMENTS_CACHE?window.SHIPMENTS_CACHE.length:0)+' imported shipment(s) for this RFQ? This cannot be undone.'))return;
+  const sb=window.getSB&&window.getSB();if(!sb){toast('Supabase not loaded.');return;}
+  try{const {error}=await sb.from('rfq_shipments').delete().eq('rfq_id',R.id);if(error)throw error;
+    window.SHIPMENTS_CACHE=[];toast('Shipments cleared.');render();
+    if(window.logAudit)logAudit(R.id,'shipment_clear','All imported shipments deleted',{});
+  }catch(e){toast('Delete failed: '+e.message);}
+};
+
+/* ---------- Minimum Charge Analysis ---------- */
+function shRate(row){
+  // Look up this shipment's ACTUAL forwarder's ACTUAL submitted rate line for this lane.
+  // Prefer Round 2 (best & final); fall back to Round 1.
+  if(!row.forwarder||!row.origin||!row.dest)return null;
+  const line2=window.fsRetLine?window.fsRetLine(row.forwarder,row.origin,row.dest,2):null;
+  const line=(line2&&line2.bs!=null)?line2:(window.fsRetLine?window.fsRetLine(row.forwarder,row.origin,row.dest,1):null);
+  if(!line||line.bs==null)return null;
+  return {min:num(line.min)||0,base:num(line.bs)||0,fsc:num(line.fsc)||0,adder:num(line.adder)||0};
+}
+function shCalc(row){
+  const rate=shRate(row);
+  if(!rate)return {rate:null,calcFreight:null,actualFreight:null,minHit:null,minPremium:0,totalCost:null};
+  const wt=num(row.chargeable_weight)||0;
+  const calcFreight=wt*rate.base;
+  const minHit=calcFreight<rate.min;
+  const actualFreight=Math.max(rate.min,calcFreight);
+  const minPremium=minHit?(rate.min-calcFreight):0;
+  const totalCost=actualFreight+(rate.fsc+rate.adder)*wt;
+  return {rate,calcFreight,actualFreight,minHit,minPremium,totalCost};
+}
+function monthOf(dateStr){return dateStr?dateStr.slice(0,7):'(no date)';}
+
+function computeMCA(){
+  const rows=(window.SHIPMENTS_CACHE||[]).filter(r=>(r.mode||'air')==='air').map(r=>{
+    const c=shCalc(r);
+    return Object.assign({},r,c,{month:monthOf(r.ship_date),country:r.origin?originCountry(r.origin):'(unknown)'});
+  });
+  return rows;
+}
+function aggBy(rows,key){
+  const g={};
+  rows.forEach(r=>{
+    const k=r[key]||'(blank)';
+    g[k]=g[k]||{key:k,n:0,hit:0,hitSpend:0,premium:0,noRate:0};
+    g[k].n++;
+    if(r.rate==null){g[k].noRate++;return;}
+    if(r.minHit){g[k].hit++;g[k].hitSpend+=r.totalCost||0;g[k].premium+=r.minPremium||0;}
+  });
+  return Object.values(g).sort((a,b)=>b.premium-a.premium);
+}
+
+function breakdownTable(title,rows,key,filterKey){
+  const agg=aggBy(rows,key);
+  if(!agg.length)return '';
+  const active=R.shipFilters&&R.shipFilters[filterKey];
+  return `<div class="card"><div class="hd"><div><h2>${title}</h2></div>${active?`<button class="btn ghost sm no-print" onclick="fsSetShipFilter('${filterKey}','')">Clear filter</button>`:''}</div>
+   <div class="bd" style="padding:0;overflow:auto;max-height:340px"><table style="font-size:12.5px"><thead><tr><th>${title.replace('Exposure by ','')}</th><th class="num">Shipments</th><th class="num">Min-hit</th><th class="num">Min-hit %</th><th class="num">Min-hit spend</th><th class="num">Total premium</th></tr></thead><tbody>
+   ${agg.map(a=>`<tr class="${active===a.key?'best':''}" style="cursor:pointer" onclick="fsSetShipFilter('${filterKey}','${esc2(a.key).replace(/'/g,"\\'")}')">
+     <td><b>${esc2(a.key)}</b></td><td class="num">${f0(a.n)}</td><td class="num">${f0(a.hit)}</td><td class="num">${a.n?f1(a.hit/a.n*100)+'%':'—'}</td><td class="num">${f0(a.hitSpend)}</td><td class="num"><b>${f0(a.premium)}</b></td></tr>`).join('')}
+   </tbody></table></div></div>`;
+}
+
+window.fsSetShipFilter=function(key,val){
+  R.shipFilters=R.shipFilters||{};
+  R.shipFilters[key]=(R.shipFilters[key]===val)?'':val;
+  persist();render();
+};
+
+window.viewShipments=function(){
+  R.shipFilters=R.shipFilters||{};
+  const cache=window.SHIPMENTS_CACHE;
+  const uploadCard=`<div class="card"><div class="hd"><div><h2>Import shipments</h2><div class="desc">Upload the daily/period actuals export (e.g. the BROADCOM auto-report). Columns are detected automatically — Shipment ID, Date, Origin/Dest or Lane, Division, Forwarder, Chargeable Weight, and Cost.</div></div>
+    <div class="row-actions no-print">
+      <label class="btn" style="cursor:pointer;margin:0">⭱ Upload shipment file<input type="file" class="hide" accept=".xlsx,.xls,.csv" onchange="fsUploadShipments(event)"></label>
+      <button class="btn ghost sm" onclick="fsSyncShipments()">↻ Refresh</button>
+      ${cache&&cache.length?`<button class="btn danger sm" onclick="fsClearShipments()">🗑 Clear all</button>`:''}
+    </div></div>
+   <div class="bd"><div id="shipUploadStatus"></div>${cache==null?'<div class="small muted">Not loaded yet — click Refresh, or upload a file.</div>':(cache.length?`<div class="chip" style="padding:8px 12px;font-size:13px">${cache.length} shipment(s) loaded for this RFQ</div>`:'<div class="small muted">No shipments imported yet for this RFQ.</div>')}</div></div>`;
+
+  if(!cache||!cache.length)return uploadCard;
+
+  let rows=computeMCA();
+  const f=R.shipFilters;
+  if(f.month)rows=rows.filter(r=>r.month===f.month);
+  if(f.country)rows=rows.filter(r=>r.country===f.country);
+  if(f.lane)rows=rows.filter(r=>(r.lane||'')===f.lane);
+  if(f.forwarder)rows=rows.filter(r=>(r.forwarder||'')===f.forwarder);
+  if(f.division)rows=rows.filter(r=>(r.division||'(blank)')===f.division);
+
+  const withRate=rows.filter(r=>r.rate!=null);
+  const noRateCount=rows.length-withRate.length;
+  const hitRows=withRate.filter(r=>r.minHit);
+  const totalPremium=hitRows.reduce((a,r)=>a+(r.minPremium||0),0);
+  const totalHitSpend=hitRows.reduce((a,r)=>a+(r.totalCost||0),0);
+  const hitPct=withRate.length?hitRows.length/withRate.length*100:0;
+  const avgPremium=hitRows.length?totalPremium/hitRows.length:0;
+
+  const activeFilters=Object.entries(f).filter(([,v])=>v).map(([k,v])=>`<span class="pill pending dot no-print">${k}: ${esc2(v)} <a href="#" onclick="fsSetShipFilter('${k}','');return false" style="margin-left:4px">×</a></span>`).join(' ');
+
+  const kpis=`<div class="statgrid" style="margin-bottom:20px">
+    <div class="stat"><div class="lab">Shipments in view</div><div class="val">${f0(rows.length)}</div><div class="sub">${noRateCount?noRateCount+' with no matching rate on file':'all matched to a submitted rate'}</div></div>
+    <div class="stat"><div class="lab">Min-hit shipments</div><div class="val" style="color:var(--navy)">${f0(hitRows.length)}</div><div class="sub">${f1(hitPct)}% of rated shipments</div></div>
+    <div class="stat"><div class="lab">Total min-hit spend</div><div class="val">${f0(totalHitSpend)}</div><div class="sub">${cur()}</div></div>
+    <div class="stat"><div class="lab">Total min premium</div><div class="val" style="color:var(--navy)">${f0(totalPremium)}</div><div class="sub">avg ${f0(avgPremium)}/shipment</div></div>
+  </div>`;
+
+  const detail=rows.slice(0,500);
+  const detailTable=`<div class="card"><div class="hd"><div><h2>Shipment-level detail${rows.length>500?' (first 500 of '+rows.length+')':''}</h2><div class="desc">Every calculation is traceable to the shipment: chargeable weight × base rate vs. the forwarder's minimum charge.</div></div></div>
+   <div class="bd" style="padding:0;overflow:auto;max-height:460px"><table style="font-size:12px"><thead><tr><th>Shipment</th><th>Date</th><th>Lane</th><th>Forwarder</th><th class="num">Wt (kg)</th><th class="num">Min</th><th class="num">Base/kg</th><th class="num">Calc freight</th><th>Min applied</th><th class="num">Actual freight</th><th class="num">Min premium</th></tr></thead><tbody>
+   ${detail.map(r=>`<tr>
+     <td class="small">${esc2(r.shipment_ref||'—')}</td><td class="small">${esc2(r.ship_date||'—')}</td><td class="small">${esc2(r.lane||(r.origin+'-'+r.dest))}</td><td class="small">${esc2(r.forwarder||'—')}</td>
+     <td class="num">${f0(r.chargeable_weight)}</td>
+     ${r.rate?`<td class="num">${f0(r.rate.min)}</td><td class="num">${f3(r.rate.base)}</td><td class="num">${f0(r.calcFreight)}</td><td>${r.minHit?'<span class="pill pending dot" style="background:var(--navy-soft);color:var(--navy)">YES</span>':'<span class="pill done dot">no</span>'}</td><td class="num"><b>${f0(r.actualFreight)}</b></td><td class="num">${r.minPremium?f0(r.minPremium):'—'}</td>`
+     :`<td colspan="6" class="small muted">No matching submitted rate for ${esc2(r.forwarder||'(forwarder blank)')} on this lane</td>`}
+   </tr>`).join('')}
+   </tbody></table></div></div>`;
+
+  return uploadCard
+    +`<div class="mt">${activeFilters}</div>`+kpis
+    +breakdownTable('Exposure by month',rows,'month','month')
+    +breakdownTable('Exposure by country',rows,'country','country')
+    +breakdownTable('Exposure by lane',rows,'lane','lane')
+    +breakdownTable('Exposure by forwarder',rows,'forwarder','forwarder')
+    +breakdownTable('Exposure by division/project',rows,'division','division')
+    +detailTable;
 };
 })();
 
