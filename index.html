@@ -2758,13 +2758,16 @@ function viewSetup(){
      <div class="hint mt">${infoSVG()}<div>List all participating forwarders here.</div></div>
     </div>
    </div>
-   <div class="card"><div class="hd"><div><h2>Scope items <span class="muted small">(${R.scope.length} lane${R.scope.length!==1?'s':''})</span></h2><div class="desc">${isAir()?'Define your RFQ scope. Each lane requires an origin and destination airport code (IATA). Lanes uploaded via Volumes tab automatically sync here.':'The country / lane buckets awarded separately.'}</div></div>${R.scope.length>0?`<button class="btn ghost sm no-print" onclick="clearAllScope()" title="Remove all lanes and start fresh">🗑️ Clear all lanes</button>`:''}</div>
+   <div class="card"><div class="hd"><div><h2>Scope items <span class="muted small">(${R.scope.length} lane${R.scope.length!==1?'s':''})</span></h2><div class="desc">${isAir()?'Define your RFQ scope. Each lane requires an origin and destination airport code (IATA). Lanes uploaded via Volumes tab automatically sync here. Division/Project, origin trucking and destination charge are optional — origin trucking and destination charge are added to every forwarder\'s door-to-door total for that lane (see Winner & Award → Forwarder Comparison).':'The country / lane buckets awarded separately.'}</div></div>${R.scope.length>0?`<button class="btn ghost sm no-print" onclick="clearAllScope()" title="Remove all lanes and start fresh">🗑️ Clear all lanes</button>`:''}</div>
     <div class="bd"><div id="scopeList">
      ${R.scope.map((sc,i)=>{const looksRate=/^\s*[\d.,]+\s*$/.test(sc.name)&&sc.name.trim()!=='';return `<div class="flex wrapf" style="margin-bottom:8px;gap:6px;align-items:center">
         <input data-scope="${sc.id}" value="${esc(sc.name)}" style="flex:2;min-width:120px" placeholder="Lane name" ${looksRate?'style="flex:2;min-width:120px;border-color:#e5b567"':''}>
         ${isAir()?`<input data-scopeorig="${sc.id}" value="${esc(sc.orig||'')}" placeholder="Orig" style="width:70px;text-transform:uppercase;font-size:12px" title="Origin airport (IATA)">
         <span style="color:var(--mut);font-size:12px">→</span>
         <input data-scopedest="${sc.id}" value="${esc(sc.dest||'')}" placeholder="Dest" style="width:70px;text-transform:uppercase;font-size:12px" title="Destination airport (IATA)">`:''}
+        <input data-scopediv="${sc.id}" value="${esc(sc.division||'')}" placeholder="Division/Project" style="width:130px;font-size:12px" title="Division / project this lane serves">
+        ${isAir()?`<input data-scopeot="${sc.id}" value="${sc.origTruck!=null?sc.origTruck:''}" placeholder="Orig trucking" style="width:100px;font-size:12px" title="Origin trucking / handling cost added to every forwarder's D2D total for this lane">
+        <input data-scopedc="${sc.id}" value="${sc.destCharge!=null?sc.destCharge:''}" placeholder="Dest charge" style="width:100px;font-size:12px" title="Destination charge added to every forwarder's D2D total for this lane, where applicable">`:''}
         ${looksRate?'<span class="pill pending dot" style="white-space:nowrap">looks like a rate</span>':''}
         <button class="del" onclick="delScope('${sc.id}')">×</button></div>`;}).join('')}
      </div><button class="btn ghost sm" onclick="addScope()">+ Add ${isAir()?'lane':'bucket'}</button>
@@ -2847,20 +2850,25 @@ function viewRound(round){
 
 /* -------- BASELINE / CURRENT RATE UPLOAD -------- */
 function viewBaselineUpload(round){
-  R.baseline=R.baseline||{};
+  R.baseline=R.baseline||{};R.baselineProvider=R.baselineProvider||{};
   const hasBaseline=R.scope.some(s=>R.baseline[s.id]!=null);
   const blCount=R.scope.filter(s=>R.baseline[s.id]!=null).length;
   return `
   <div class="card"><div class="hd"><div><h2>Current rate (baseline)</h2>
-    <div class="desc">Upload your current contracted rates to calculate savings against each bid.</div></div>
+    <div class="desc">Current provider and current contracted rate per lane — used to calculate projected savings against the recommended forwarder on Winner &amp; Award.</div></div>
     <div class="row-actions">
       <label class="btn ghost" style="cursor:pointer;margin:0;font-weight:600">⭱ Upload current rates<input type="file" class="hide" accept=".xlsx,.xls,.csv" onchange="uploadBaseline(event)"></label>
-      ${hasBaseline?`<button class="btn danger sm" onclick="R.baseline={};persist();render()">Clear</button>`:''}
+      ${hasBaseline?`<button class="btn danger sm" onclick="R.baseline={};R.baselineProvider={};persist();render()">Clear</button>`:''}
     </div></div>
    <div class="bd">
-    ${hasBaseline?`<div class="chip" style="padding:8px 12px;font-size:13px"><b>${blCount}</b> / ${R.scope.length} lanes with baseline rates loaded</div>`
-    :`<div class="small muted">No baseline loaded yet. Upload an Excel with Lane (or Origin + Dest) and a Rate / Base Rate column. The tool matches lanes to your scope items and fills the baseline row in the rate grid below.</div>`}
+    ${hasBaseline?`<div class="chip" style="padding:8px 12px;font-size:13px;margin-bottom:10px"><b>${blCount}</b> / ${R.scope.length} lanes with baseline rates loaded</div>`
+    :`<div class="small muted" style="margin-bottom:10px">Upload an Excel with Lane (or Origin + Dest) and a Rate / Base Rate column to bulk-fill rates below, or enter provider and rate directly per lane.</div>`}
     <div id="baselineStatus"></div>
+    ${R.scope.length?`<div style="overflow:auto"><table><thead><tr><th>Lane</th><th>Current provider</th><th class="num">Current rate (${esc(cur())}/kg)</th></tr></thead><tbody>
+      ${R.scope.map(s=>`<tr><td><b>${esc(s.name)}</b></td>
+        <td><input data-blprov="${s.id}" value="${esc(R.baselineProvider[s.id]||'')}" placeholder="e.g. incumbent forwarder" style="width:100%;min-width:140px;font-size:12px"></td>
+        <td class="num"><input data-baseline="${s.id}" value="${R.baseline[s.id]!=null?R.baseline[s.id]:''}" placeholder="—" style="width:100px;text-align:right;font-size:12px"></td></tr>`).join('')}
+      </tbody></table></div>`:''}
    </div>
   </div>`;
 }
@@ -4715,8 +4723,12 @@ function wire(){
   document.querySelectorAll('[data-scope]').forEach(el=>{el.oninput=()=>{const s=R.scope.find(x=>x.id===el.dataset.scope);if(s){s.name=el.value;persist();}};el.onchange=()=>render();});
   document.querySelectorAll('[data-scopeorig]').forEach(el=>{el.oninput=()=>{const s=R.scope.find(x=>x.id===el.dataset.scopeorig);if(s){s.orig=el.value.toUpperCase();persist();}};el.onchange=()=>{const s=R.scope.find(x=>x.id===el.dataset.scopeorig);if(s&&s.orig&&s.dest&&!s.name.includes('-'))s.name=s.orig+'–'+s.dest;render();};});
   document.querySelectorAll('[data-scopedest]').forEach(el=>{el.oninput=()=>{const s=R.scope.find(x=>x.id===el.dataset.scopedest);if(s){s.dest=el.value.toUpperCase();persist();}};el.onchange=()=>{const s=R.scope.find(x=>x.id===el.dataset.scopedest);if(s&&s.orig&&s.dest&&!s.name.includes('-'))s.name=s.orig+'–'+s.dest;render();};});
+  document.querySelectorAll('[data-scopediv]').forEach(el=>{el.oninput=()=>{const s=R.scope.find(x=>x.id===el.dataset.scopediv);if(s){s.division=el.value;persist();}};});
+  document.querySelectorAll('[data-scopeot]').forEach(el=>{el.onchange=()=>{const s=R.scope.find(x=>x.id===el.dataset.scopeot);if(s){s.origTruck=el.value===''?null:num(el.value);persist();render();}};});
+  document.querySelectorAll('[data-scopedc]').forEach(el=>{el.onchange=()=>{const s=R.scope.find(x=>x.id===el.dataset.scopedc);if(s){s.destCharge=el.value===''?null:num(el.value);persist();render();}};});
   document.querySelectorAll('[data-r]').forEach(el=>el.onchange=()=>{setRate(+el.dataset.r,el.dataset.c,el.dataset.s,el.value===''?null:el.value);render();});
   document.querySelectorAll('[data-baseline]').forEach(el=>el.onchange=()=>{R.baseline=R.baseline||{};const v=num(el.value);if(v!=null)R.baseline[el.dataset.baseline]=v;else delete R.baseline[el.dataset.baseline];persist();render();});
+  document.querySelectorAll('[data-blprov]').forEach(el=>el.onchange=()=>{R.baselineProvider=R.baselineProvider||{};if(el.value.trim())R.baselineProvider[el.dataset.blprov]=el.value.trim();else delete R.baselineProvider[el.dataset.blprov];persist();});
   document.querySelectorAll('[data-j]').forEach(el=>el.oninput=()=>{const j=R.ev.judges.find(x=>x.id===el.dataset.j);if(j){j.name=el.value;persist();}});
   const ws=document.getElementById('wslider');if(ws)ws.oninput=()=>{R.ev.weights.cost=+ws.value;R.ev.weights.service=100-+ws.value;render();};
   document.querySelectorAll('[data-dim]').forEach(el=>el.oninput=()=>{const d=R.ev.dims.find(x=>x.id===el.dataset.dim);if(d){d[el.dataset.k]=el.dataset.k==='weight'?num(el.value):el.value;persist();}});
@@ -4752,7 +4764,7 @@ document.querySelectorAll('[data-lane]').forEach(el=>el.oninput=()=>{const l=R.l
 /* mutations */
 function addCar(){R.carriers.push({id:uid(),name:'',email:'',confirmed:false});render();}
 function delCar(id){R.carriers=R.carriers.filter(c=>c.id!==id);render();}
-function addScope(){R.scope.push({id:uid(),name:isAir()?'New lane':'New bucket',orig:'',dest:''});render();}
+function addScope(){R.scope.push({id:uid(),name:isAir()?'New lane':'New bucket',orig:'',dest:'',division:'',origTruck:null,destCharge:null});render();}
 function delScope(id){R.scope=R.scope.filter(s=>s.id!==id);render();}
 function clearAllScope(){
   if(!confirm('Remove ALL '+R.scope.length+' lane'+(R.scope.length!==1?'s':'')+' from this RFQ?\n\nThis also clears related rates and award selections.\nUpload a new lanes file to start fresh.')) return;
@@ -7065,6 +7077,180 @@ function installToggle(){
   b.textContent=label();
 }
 document.addEventListener('DOMContentLoaded',()=>setTimeout(installToggle,600));
+})();
+
+</script>
+<script>
+/* ================================================================
+   PHASE 1 — Freight Cost Intelligence upgrade (spec sections 1, 6, 7, 8)
+   New "Forwarder RFQ Comparison & Award Decision" card: per-lane, per-
+   forwarder Min / $/kg / breakeven / FSC+adder / landed cost / D2D total
+   (landed + origin trucking + destination charge) / service score /
+   commercial rank, plus current-provider vs recommended savings and the
+   final award + justification. Grouped by country, air-freight only
+   (mirrors the grouping already used by Cost ranking by country and the
+   Weight-Break table).
+   Historical cost simulation, min-hit %, courier-per-shipment and the
+   executive drill-down dashboard (spec sections 2-5, 9, 10) are NOT in
+   this pass — they need actual shipment-level records, which nothing in
+   FreightSphere currently ingests.
+   Also formalizes the audit trail: completeR2()/closeRFQ() now log a
+   full structured snapshot (recommended/runner-up, current vs
+   recommended cost, savings, service score, final award, justification)
+   at the two moments the spec calls Final Evaluation and Approval.
+   ================================================================ */
+(function(){
+'use strict';
+
+function fmtc(n,d){ return (typeof fmt==='function') ? fmt(n,d) : (n==null?'—':Number(n).toFixed(d)); }
+// Self-contained lane-volume lookup — laneVolume() lives inside flow_module.js's own closure
+// and is not reachable from here (a separate IIFE), so this replicates it directly rather
+// than silently falling back to 0 the way a typeof-guarded call to the outer name would.
+function pxLaneVolume(sc){
+  const k=((sc.orig||'')+'|'+(sc.dest||'')).toUpperCase();
+  const d=R.volumes&&R.volumes.data&&R.volumes.data[k];
+  return d?Object.values(d).reduce((a,x)=>a+(num(x)||0),0):0;
+}
+// Self-contained equivalent of flow_module.js's fsRetLine — same cross-closure reason.
+function pxRetLine(fwdName,orig,dest,round){
+  const L=(R.returnsList||[]).filter(r=>r.mode==='air'&&r.forwarder===fwdName&&(r.origin||'').toUpperCase()===(orig||'').toUpperCase()&&(r.dest||'').toUpperCase()===(dest||'').toUpperCase());
+  return L.find(r=>(r.round||1)===round)||L.find(r=>(r.round||1)===2)||L[0]||null;
+}
+
+/* ---------- shared lane/forwarder comparison model ---------- */
+function comparisonRows(round){
+  if(typeof isAir!=='function'||!isAir())return [];
+  const parts=(typeof participants==='function')?participants(round):activeCarriers();
+  if(!parts.length)return [];
+  R.baseline=R.baseline||{};R.baselineProvider=R.baselineProvider||{};
+  return R.scope.filter(sc=>sc.orig&&sc.dest).map(sc=>{
+    const oc=originCountry(sc.orig);
+    const vol=pxLaneVolume(sc);
+    const ot=num(sc.origTruck)||0, dc=num(sc.destCharge)||0;
+    const rows=parts.map(c=>{
+      const line=pxRetLine(c.name,sc.orig,sc.dest,round);
+      const landed=rateOf(round,c.id,sc.id); // already minimum-charge aware
+      if(landed==null||landed<=0)return null;
+      const be=(line&&line.bs)?((num(line.min)||0)/(num(line.bs)||1)):null;
+      const d2d=landed+ot+dc;
+      const svc=serviceScore(c.id);
+      return {c,line,min:line?num(line.min):null,base:line?num(line.bs):null,fscadd:line?((num(line.fsc)||0)+(num(line.adder)||0)):null,breakeven:be,landed,d2d,svc};
+    }).filter(Boolean).sort((a,b)=>a.d2d-b.d2d);
+    if(!rows.length)return null;
+    const recommended=rows[0], runnerUp=rows[1]||null;
+    const curProv=R.baselineProvider[sc.id]||null;
+    const curRate=R.baseline[sc.id]!=null?num(R.baseline[sc.id]):null;
+    const curD2D=curRate!=null?curRate+ot+dc:null;
+    const curAnnual=curD2D!=null&&vol?curD2D*vol:null;
+    const recAnnual=recommended.d2d*vol;
+    const savings=(curAnnual!=null)?curAnnual-recAnnual:null;
+    const savingsPct=(curAnnual!=null&&curAnnual>0)?savings/curAnnual*100:null;
+    const overrideId=R.laneAward&&R.laneAward[sc.id];
+    const finalRow=overrideId?(rows.find(x=>x.c.id===overrideId)||recommended):recommended;
+    const reason=R.laneAwardReason&&R.laneAwardReason[sc.id];
+    return {sc,oc,vol,ot,dc,rows,recommended,runnerUp,curProv,curRate,curD2D,curAnnual,recAnnual,savings,savingsPct,finalRow,isOverride:!!overrideId,reason};
+  }).filter(Boolean);
+}
+
+/* ---------- Forwarder RFQ Comparison & Award Decision card ---------- */
+function comparisonAwardCard(round){
+  const data=comparisonRows(round);
+  if(!data.length)return '';
+  const groups={};data.forEach(l=>{(groups[l.oc]=groups[l.oc]||[]).push(l);});
+  const wt=num(R.cmp&&R.cmp.wt)!=null?num(R.cmp.wt):100;
+  let bodyRows='';
+  Object.keys(groups).sort().forEach(oc=>{
+    const laneGroup=groups[oc];
+    const countryRowspan=laneGroup.reduce((n,l)=>n+l.rows.length,0);
+    let firstOfCountry=true;
+    laneGroup.forEach(l=>{
+      let firstOfLane=true;
+      l.rows.forEach((x,ri)=>{
+        const rankStyle=ri===0?'background:var(--ok-soft);color:var(--ok)':ri===1?'background:var(--amber-soft);color:var(--amber)':ri===2?'background:var(--navy-soft);color:var(--navy)':'';
+        const isFinal=l.finalRow&&x.c.id===l.finalRow.c.id;
+        bodyRows+='<tr'+(isFinal?' style="background:#eefaf3"':'')+'>'
+          +(firstOfCountry?'<td rowspan="'+countryRowspan+'" style="vertical-align:top;border-right:3px solid var(--pri);background:var(--bg2)"><b>'+esc(oc)+'</b></td>':'')
+          +(firstOfLane?'<td rowspan="'+l.rows.length+'" style="vertical-align:top"><b>'+esc(l.sc.name)+'</b>'+(l.sc.division?'<div class="small muted">'+esc(l.sc.division)+'</div>':'')+(l.vol?'<div class="small muted">'+fmtc(l.vol,0)+' kg/yr</div>':'')+'</td>':'')
+          +'<td>'+(ri+1)+(isFinal?' 🏆':'')+'</td><td>'+esc(x.c.name)+'</td>'
+          +'<td class="num">'+(x.min!=null?fmtc(x.min,0):'—')+'</td>'
+          +'<td class="num">'+(x.base!=null?fmtc(x.base,3):'—')+'</td>'
+          +'<td class="num">'+(x.fscadd!=null?fmtc(x.fscadd,3):'—')+'</td>'
+          +'<td class="num">'+(x.breakeven!=null?fmtc(x.breakeven,0)+'kg':'—')+'</td>'
+          +'<td class="num"><b>'+fmtc(x.landed,3)+'</b></td>'
+          +'<td class="num" style="'+rankStyle+'"><b>'+fmtc(x.d2d,3)+'</b></td>'
+          +'<td class="num">'+(x.svc!=null?fmtc(x.svc,0):'<span class="muted">—</span>')+'</td>'
+          +'<td>'+(ri+1)+'</td></tr>';
+        firstOfCountry=false;firstOfLane=false;
+      });
+    });
+  });
+  const decisionRows=data.map(l=>{
+    const savedCls=l.savings==null?'':(l.savings>=0?'style="color:var(--ok)"':'style="color:var(--navy)"');
+    return `<tr>
+      <td><b>${esc(l.sc.name)}</b><div class="small muted">${esc(l.oc)}</div></td>
+      <td>${l.curProv?esc(l.curProv):'<span class="muted">not set</span>'}</td>
+      <td class="num">${l.curRate!=null?fmtc(l.curRate,3):'—'}</td>
+      <td class="num">${l.curAnnual!=null?fmtc(l.curAnnual,0):'—'}</td>
+      <td><b>${esc(l.recommended.c.name)}</b></td>
+      <td>${l.runnerUp?esc(l.runnerUp.c.name):'—'}</td>
+      <td class="num">${fmtc(l.recAnnual,0)}</td>
+      <td class="num" ${savedCls}><b>${l.savings!=null?fmtc(l.savings,0):'—'}</b></td>
+      <td class="num" ${savedCls}>${l.savingsPct!=null?fmtc(l.savingsPct,1)+'%':'—'}</td>
+      <td>${l.svc==null?'':''}<b>${esc(l.finalRow.c.name)}</b>${l.isOverride?' <span class="small" style="color:var(--amber)">✎</span>':''}</td>
+      <td class="small muted">${l.isOverride?(l.reason?esc(l.reason.reason):'<span class="muted">override, no reason on file</span>'):'—'}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="card"><div class="hd"><div><h2>Forwarder RFQ Comparison &amp; Award Decision</h2>
+    <div class="desc">Full evaluated comparison per lane, grouped by country — minimum charge, base rate, breakeven kg, landed cost (min-charge aware, at ${wt}kg), and door-to-door total (landed + origin trucking + destination charge). Ranked by D2D total, not raw $/kg.</div></div></div>
+   <div class="bd" style="padding:0;overflow:auto"><table style="font-size:12.5px"><thead><tr>
+     <th>Country</th><th>Lane</th><th>Rank</th><th>Forwarder</th><th class="num">Min</th><th class="num">Base/kg</th><th class="num">FSC+Adder</th><th class="num">Breakeven</th>
+     <th class="num">Landed/kg</th><th class="num">D2D total/kg</th><th class="num">Service score</th><th>Commercial rank</th></tr></thead><tbody>${bodyRows}</tbody></table></div>
+   <div class="bd" style="padding-top:0"><div class="hint">${infoSVG()}<div><b>D2D total</b> = landed cost/kg (max(min, base×weight)/weight + FSC + adder) + origin trucking + destination charge, both set per lane on the Setup tab. Commercial rank is by D2D total, so a lane with no trucking/destination charge entered simply ranks on landed cost.</div></div></div></div>
+   <div class="card"><div class="hd"><div><h2>Award Decision</h2><div class="desc">Current provider and rate come from the baseline uploaded on the Round 1 tab. Projected savings = current annualized cost − recommended annualized cost, using each lane's annual volume.</div></div></div>
+   <div class="bd" style="padding:0;overflow:auto"><table style="font-size:12.5px"><thead><tr>
+     <th>Lane</th><th>Current provider</th><th class="num">Current rate</th><th class="num">Current annual cost</th>
+     <th>Recommended</th><th>Runner-up</th><th class="num">Recommended annual cost</th><th class="num">Projected savings</th><th class="num">Savings %</th><th>Final award</th><th>Justification</th></tr></thead><tbody>${decisionRows}</tbody></table></div>
+   <div class="bd" style="padding-top:0"><div class="hint">${infoSVG()}<div>Final award and justification mirror the selection box on the Lane-level award table above — change the award there, this table updates automatically. No current provider/rate on file for a lane simply shows "—" for its savings figures rather than a fabricated number.</div></div></div></div>`;
+}
+
+/* ---------- wire into Winner & Award ---------- */
+const viewWinner_p0=window.viewWinner;
+window.viewWinner=function(){
+  const round=R.r2.complete?2:1;
+  return viewWinner_p0()+comparisonAwardCard(round);
+};
+
+/* ---------- audit trail: formalize the pipeline the spec calls out ---------- */
+function awardSnapshot(round){
+  return comparisonRows(round).map(l=>({
+    lane:l.sc.name,country:l.oc,
+    recommended:l.recommended.c.name,recommendedD2D:+l.recommended.d2d.toFixed(3),
+    runnerUp:l.runnerUp?l.runnerUp.c.name:null,
+    currentProvider:l.curProv,currentRate:l.curRate,currentAnnual:l.curAnnual!=null?Math.round(l.curAnnual):null,
+    recommendedAnnual:Math.round(l.recAnnual),
+    savings:l.savings!=null?Math.round(l.savings):null,savingsPct:l.savingsPct!=null?+l.savingsPct.toFixed(1):null,
+    finalAward:l.finalRow.c.name,isOverride:l.isOverride,justification:l.reason?l.reason.reason:null,
+  }));
+}
+const completeR2_p0=window.completeR2;
+window.completeR2=function(){
+  completeR2_p0();
+  if(window.logAudit){
+    try{ logAudit(R.id,'final_evaluation','Round 2 completed — Final Evaluation stage opened',{stage:'Final Evaluation'}); }catch(e){}
+  }
+};
+const closeRFQ_p0=window.closeRFQ;
+window.closeRFQ=function(){
+  const before=R.rfqClosed;
+  closeRFQ_p0();
+  if(!before&&R.rfqClosed&&window.logAudit){
+    try{
+      const snap=awardSnapshot(R.r2.complete?2:1);
+      const savingsTot=snap.reduce((a,x)=>a+(x.savings||0),0);
+      logAudit(R.id,'award_approved','RFQ approved and closed — '+snap.length+' lane(s) awarded, '+cur()+' '+Math.round(savingsTot)+' projected annual savings vs current baseline',{stage:'Approval',lanes:snap});
+    }catch(e){}
+  }
+};
 })();
 
 </script>
